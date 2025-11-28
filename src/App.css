@@ -1,0 +1,26 @@
+(/* Minimal global styles to complement Tailwind utilities */)
+html, body, #root {
+  height: 100%;
+}
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:root {
+  /* fallback, kept here to avoid undefined variable if index.css is not loaded first */
+  --accent: var(--color-indigo-600, #4f46e5);
+}
+
+/* Improve focus outlines for minimal look */
+input:focus,
+select:focus,
+textarea:focus,
+button:focus {
+  outline: none;
+}
+
+/* Slight elevation for simplified cards */
+.card {
+  box-shadow: 0 4px 16px var(--card-shadow);
+}
