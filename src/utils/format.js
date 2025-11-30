@@ -21,3 +21,39 @@ export function unformatRupiah(formatted) {
   const s = String(formatted).replace(/\D/g, "");
   return s;
 }
+
+export function generateAsetId(assets = [], beban = "", tglPembelian = "") {
+  // Determine year from tglPembelian or default to current year
+  let year = "";
+  if (typeof tglPembelian === "string" && tglPembelian.length >= 4) {
+    // support YYYY-MM-DD or ISO
+    const m = tglPembelian.match(/^(\d{4})/);
+    if (m) year = m[1];
+    else {
+      try {
+        const d = new Date(tglPembelian);
+        if (!Number.isNaN(d.getTime())) year = String(d.getFullYear());
+      } catch {}
+    }
+  }
+  if (!year) year = String(new Date().getFullYear());
+
+  const bebanKey = (beban || "").toString().trim();
+  const bebanEsc = bebanKey.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&");
+  // We want the numeric sequence to be per-beban (not per-year). So find the
+  // maximum sequence number used for this beban across all years, then add 1.
+  const regexAnyYear = new RegExp(`^(\\d+)\/${bebanEsc}\/\\d{4}$`, "i");
+  let maxNum = 0;
+  for (const a of assets || []) {
+    const id = a?.asetId ?? a?.AsetId ?? "";
+    if (!id) continue;
+    const m = String(id).match(regexAnyYear);
+    if (!m) continue;
+    const n = Number(m[1]) || 0;
+    if (n > maxNum) maxNum = n;
+  }
+  const next = maxNum + 1;
+  const pad = String(next).padStart(4, "0");
+  // Format: "xxxx/beban/year"
+  return `${pad}/${bebanKey}/${year}`;
+}

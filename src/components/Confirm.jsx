@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { Close } from "./Icons";
 
 export default function Confirm({
   open = false,
@@ -49,20 +50,10 @@ export default function Confirm({
           <button
             onClick={onClose}
             className="p-1 rounded-full hover:bg-gray-100 transition"
+            aria-label="Close"
+            title="Close"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 text-gray-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <Close className="h-5 w-5 text-gray-500" />
           </button>
         </div>
 

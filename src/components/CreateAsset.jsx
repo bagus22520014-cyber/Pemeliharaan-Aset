@@ -1,4 +1,5 @@
 import React from "react";
+import { FaRegEdit, FaLock } from "react-icons/fa";
 import { formatRupiah, unformatRupiah } from "../utils/format";
 import { Save } from "./Icons";
 
@@ -15,7 +16,18 @@ export default function CreateAsset({
   akun = [],
   disabledBeban = false,
   hideHeader = false,
+  autoAsetId = null,
+  readOnlyAsetId = false,
+  submitDisabled = false,
 }) {
+  const [manualMode, setManualMode] = React.useState(
+    Boolean(form?.asetId) && Boolean(!readOnlyAsetId)
+  );
+
+  React.useEffect(() => {
+    // If parent disallows manual editing, force manualMode off
+    if (readOnlyAsetId) setManualMode(false);
+  }, [readOnlyAsetId]);
   return (
     <div className="bg-white ring-1 ring-gray-200 p-4 rounded-xl shadow-sm w-full">
       {!hideHeader && (
@@ -47,14 +59,51 @@ export default function CreateAsset({
               <span className="text-base text-gray-700 font-semibold">
                 {field.label}
               </span>
-              <input
-                type={field.type}
-                placeholder={field.placeholder}
-                value={field.value}
-                onChange={(e) => field.onChange(e.target.value)}
-                className="mt-1 w-full p-2 rounded-lg border border-gray-400 bg-white text-base
+              <div className="relative">
+                <input
+                  type={field.type}
+                  placeholder={field.placeholder}
+                  value={
+                    field.label === "Aset Id"
+                      ? field.value || autoAsetId || ""
+                      : field.value || ""
+                  }
+                  onChange={(e) => field.onChange(e.target.value)}
+                  className="mt-1 w-full p-2 rounded-lg border border-gray-400 bg-white text-base
         placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500 transition-all"
-              />
+                  readOnly={
+                    field.label === "Aset Id"
+                      ? readOnlyAsetId || !manualMode
+                      : undefined
+                  }
+                />
+                {field.label === "Aset Id" && !readOnlyAsetId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !manualMode;
+                      setManualMode(next);
+                      if (next && !(form?.asetId || "")) {
+                        setForm((f) => ({ ...f, asetId: autoAsetId || "" }));
+                      }
+                      if (!next) {
+                        // switching back to auto - clear manual value
+                        setForm((f) => ({ ...f, asetId: "" }));
+                      }
+                    }}
+                    title={
+                      manualMode ? "Switch to auto-generated" : "Edit manually"
+                    }
+                    className="absolute right-1 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded text-gray-600 hover:bg-gray-100"
+                  >
+                    {manualMode ? (
+                      <FaLock className="h-4 w-4" />
+                    ) : (
+                      <FaRegEdit className="h-4 w-4" />
+                    )}
+                  </button>
+                )}
+              </div>
             </label>
           ))}
         </div>
@@ -97,7 +146,7 @@ export default function CreateAsset({
                 focus:ring-2 focus:ring-indigo-500"
             >
               <option value="" disabled>
-                ➕ Tambah Grup
+                Pilih Grup
               </option>
               {groups.map((g) => (
                 <option key={g}>{g}</option>
@@ -142,6 +191,41 @@ export default function CreateAsset({
                 <option key={a}>{a}</option>
               ))}
             </select>
+          </label>
+        </div>
+
+        {/* Status & Keterangan */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-base text-gray-700 font-semibold">
+              Status
+            </span>
+            <select
+              value={form.statusAset}
+              onChange={(e) => setForm({ ...form, statusAset: e.target.value })}
+              className="mt-1 w-full p-2 rounded-lg border border-gray-400 bg-white text-base
+                focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="aktif">Aktif</option>
+              <option value="rusak">Rusak</option>
+              <option value="diperbaiki">Diperbaiki</option>
+              <option value="dipinjam">Dipinjam</option>
+              <option value="dijual">Dijual</option>
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="text-base text-gray-700 font-semibold">
+              Keterangan
+            </span>
+            <input
+              type="text"
+              placeholder="Keterangan (opsional)"
+              value={form.keterangan}
+              onChange={(e) => setForm({ ...form, keterangan: e.target.value })}
+              className="mt-1 w-full p-2 rounded-lg border border-gray-400 text-base
+                placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500"
+            />
           </label>
         </div>
 
@@ -213,7 +297,7 @@ export default function CreateAsset({
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || submitDisabled}
             className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 flex items-center gap-2 text-white rounded-full text-base font-semibold transition disabled:opacity-60"
           >
             <Save className="h-4 w-4 text-white" />

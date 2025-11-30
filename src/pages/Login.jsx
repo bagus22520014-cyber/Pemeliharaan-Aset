@@ -131,9 +131,6 @@ export default function Login({ onLogin }) {
         className="bg-white ring-1 ring-gray-100 rounded-2xl p-8 w-full max-w-md shadow-sm"
       >
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-md bg-indigo-600 text-white flex items-center justify-center font-semibold">
-            A
-          </div>
           <h1 className="text-lg font-medium">Sign in</h1>
         </div>
         {error && <div className="text-sm text-red-600 mb-4">{error}</div>}
@@ -163,7 +160,7 @@ export default function Login({ onLogin }) {
         <div className="flex items-center justify-between mt-4">
           <button
             type="submit"
-            className="px-4 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-500 disabled:opacity-60 text-sm font-medium"
+            className="w-full px-4 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-500 disabled:opacity-60 text-sm font-medium"
             disabled={loading}
           >
             {loading ? "Signing in..." : "Sign in"}

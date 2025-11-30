@@ -1,7 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { generateAsetId } from "../utils/format";
 import Alert from "../components/Alert";
+import { FaPlus } from "react-icons/fa";
+import Navbar from "../components/Navbar";
 import Confirm from "../components/Confirm";
 import CreateAsset from "../components/CreateAsset";
+import AssetDetail from "../components/AssetDetail";
 import { createAset, listAset } from "../api/aset";
 import SearchFilterBar from "../components/SearchFilterBar";
 import AssetTable from "../components/AssetTable";
@@ -59,6 +63,7 @@ const AKUN = [
   "1701-06 (Renovasi & Instalasi Listrik)",
   "1701-07 (Perlengkapan & Inventaris IT)",
 ];
+const STATUSES = ["aktif", "rusak", "diperbaiki", "dipinjam", "dijual"];
 
 export default function User({ user, sessionUser, onLogout }) {
   const [showCreate, setShowCreate] = useState(false);
@@ -73,6 +78,8 @@ export default function User({ user, sessionUser, onLogout }) {
     nilaiAset: "",
     tglPembelian: "",
     masaManfaat: "",
+    statusAset: "aktif",
+    keterangan: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -81,10 +88,23 @@ export default function User({ user, sessionUser, onLogout }) {
   const [alert, setAlert] = useState(null);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
   const tableRef = useRef(null);
+  const [detailAsset, setDetailAsset] = useState(null);
+  // Scan control moved into SearchFilterBar
   const [filterBeban, setFilterBeban] = useState(sessionUser?.beban ?? "All");
   const [filterGroup, setFilterGroup] = useState("All");
   const [filterTahun, setFilterTahun] = useState("All");
+  const [filterStatus, setFilterStatus] = useState("All");
   const [search, setSearch] = useState("");
+  const suggestedAsetId = useMemo(
+    () => generateAsetId(assets, form.beban, form.tglPembelian),
+    [assets, form.beban, form.tglPembelian]
+  );
+
+  useEffect(() => {
+    if (showCreate) {
+      setForm((f) => ({ ...f, asetId: suggestedAsetId }));
+    }
+  }, [showCreate, suggestedAsetId]);
 
   const resetForm = () =>
     setForm({
@@ -98,6 +118,8 @@ export default function User({ user, sessionUser, onLogout }) {
       nilaiAset: "",
       tglPembelian: "",
       masaManfaat: "",
+      statusAset: "aktif",
+      keterangan: "",
     });
 
   const handleCreate = async (e) => {
@@ -105,18 +127,20 @@ export default function User({ user, sessionUser, onLogout }) {
     setLoading(true);
     setError(null);
     try {
-      const created = await createAset(form);
+      const finalPayload = { ...form, asetId: form.asetId || suggestedAsetId };
+      if (!form.asetId) setForm((f) => ({ ...f, asetId: suggestedAsetId }));
+      const created = await createAset(finalPayload);
       if (created && (created.id || created.asetId)) {
         setAssets((prev) => {
-          const id = String(created.id ?? created.asetId);
-          const found = prev.some((p) => String(p.id ?? p.asetId) === id);
+          const id = String(created.asetId ?? created.id);
+          const found = prev.some((p) => String(p.asetId ?? p.id) === id);
           if (found)
             return prev.map((p) =>
-              String(p.id ?? p.asetId) === id ? created : p
+              String(p.asetId ?? p.id) === id ? created : p
             );
           return [created, ...prev];
         });
-        tableRef.current?.goToAsset?.(created.id ?? created.asetId, {
+        tableRef.current?.goToAsset?.(created.asetId ?? created.id, {
           highlight: "bg",
         });
         setAlert({ type: "success", message: "Aset berhasil ditambahkan." });
@@ -184,34 +208,12 @@ export default function User({ user, sessionUser, onLogout }) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white p-6">
-      <header className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">User dashboard</h1>
-        <div className="flex items-center gap-4">
-          <div className="text-sm text-gray-600">
-            {user?.username ?? "Unknown"}
-          </div>
-          <button
-            onClick={() => setLogoutConfirm(true)}
-            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-500 flex items-center gap-2"
-          >
-            <svg
-              className="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <path d="M16 17l5-5-5-5" />
-              <path d="M21 12H9" />
-            </svg>
-            Logout
-          </button>
-        </div>
-      </header>
+    <>
+      <Navbar
+        title="User dashboard"
+        user={user}
+        onLogout={() => setLogoutConfirm(true)}
+      />
       {alert && (
         <div className="mb-4">
           <Alert
@@ -235,126 +237,169 @@ export default function User({ user, sessionUser, onLogout }) {
         />
       )}
 
-      <main>
-        <p>
-          Welcome,
-          <span className="font-semibold"> {user?.username}</span>
-        </p>
+      <div className="min-h-screen bg-white p-6 pt-0">
+        <main>
+          {/* Welcome message removed — header / navbar now displays username */}
 
-        <section
-          className={`mt-6 grid grid-cols-1 ${
-            showCreate ? "md:grid-cols-4" : "md:grid-cols-1"
-          } gap-6`}
-        >
-          {showCreate && (
-            <div className="md:col-span-1 bg-gray-50 p-2 rounded shadow">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-semibold">Create Asset</h3>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowCreate(false)}
-                    className="px-3 py-1.5 rounded border border-gray-300 text-sm bg-white"
-                  >
-                    Hide
-                  </button>
-                </div>
-              </div>
-              <CreateAsset
-                form={form}
-                setForm={setForm}
-                onSubmit={handleCreate}
-                onCancel={() => resetForm()}
-                isEditing={false}
-                loading={loading}
-                error={error}
-                groups={GROUPS}
-                bebans={BEBANS}
-                akun={AKUN}
-                disabledBeban={true}
-                hideHeader={true}
-              />
-            </div>
-          )}
-          <div
-            className={`transition-all ${
-              showCreate ? "md:col-span-3" : "md:col-span-1 md:w-full"
-            }`}
+          <section
+            className={`mt-6 grid grid-cols-1 ${
+              showCreate ? "md:grid-cols-4" : "md:grid-cols-1"
+            } gap-6`}
           >
-            <SearchFilterBar
-              filterBeban={filterBeban}
-              onFilterChange={(v) => setFilterBeban(v)}
-              bebans={BEBANS}
-              filterGroup={filterGroup}
-              onFilterGroupChange={(v) => setFilterGroup(v)}
-              groups={GROUPS}
-              filterYear={filterTahun}
-              onFilterYearChange={(v) => setFilterTahun(v)}
-              search={search}
-              onSearchChange={(v) => setSearch(v)}
-              showBeban={false}
-            />
-            <div className="flex items-center justify-between mt-2">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setShowCreate((s) => !s)}
-                  className="px-3 py-1 rounded-md bg-indigo-600 text-white text-sm flex items-center gap-2"
-                >
-                  <svg
-                    className="h-4 w-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M12 5v14" />
-                    <path d="M5 12h14" />
-                  </svg>
-                </button>
-                <h2 className="font-semibold">Daftar Aset</h2>
-              </div>
-            </div>
-            {(() => {
-              const q = search.trim().toLowerCase();
-              const filtered = assets.filter((a) => {
-                const matchBeban =
-                  filterBeban === "All" || a.beban === filterBeban;
-                const matchGroup =
-                  filterGroup === "All" || a.grup === filterGroup;
-                const tgl = a.tglPembelian
-                  ? String(a.tglPembelian).substring(0, 4)
-                  : null;
-                const matchTahun =
-                  filterTahun === "All" || (tgl && tgl === String(filterTahun));
-                if (!matchBeban) return false;
-                if (!matchGroup) return false;
-                if (!matchTahun) return false;
-                if (!q) return true;
-                const fields = [
-                  a.namaAset,
-                  a.asetId,
-                  a.accurateId,
-                  a.spesifikasi,
-                ]
-                  .filter(Boolean)
-                  .map((s) => String(s).toLowerCase());
-                return fields.some((f) => f.includes(q));
-              });
-              return (
-                <AssetTable
-                  assets={filtered}
-                  showActions={false}
+            {showCreate && (
+              <div className="md:col-span-1 bg-gray-50 p-2 rounded shadow">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-semibold">Create Asset</h3>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowCreate(false)}
+                      className="px-3 py-1.5 rounded border border-gray-300 text-sm bg-white"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+                <CreateAsset
+                  form={form}
+                  setForm={setForm}
+                  onSubmit={handleCreate}
+                  onCancel={() => resetForm()}
+                  isEditing={false}
                   loading={loading}
-                  title={`Daftar Aset (Beban: ${sessionUser?.beban ?? "All"})`}
-                  ref={tableRef}
-                  resetOnAssetsChange={false}
+                  error={error}
+                  groups={GROUPS}
+                  bebans={BEBANS}
+                  akun={AKUN}
+                  disabledBeban={true}
+                  hideHeader={true}
+                  autoAsetId={suggestedAsetId}
+                  readOnlyAsetId={true}
                 />
-              );
-            })()}
-          </div>
-        </section>
-      </main>
-    </div>
+              </div>
+            )}
+            <div
+              className={`transition-all ${
+                showCreate ? "md:col-span-3" : "md:col-span-1 md:w-full"
+              }`}
+            >
+              <SearchFilterBar
+                filterBeban={filterBeban}
+                onFilterChange={(v) => setFilterBeban(v)}
+                bebans={BEBANS}
+                filterGroup={filterGroup}
+                onFilterGroupChange={(v) => setFilterGroup(v)}
+                groups={GROUPS}
+                filterYear={filterTahun}
+                onFilterYearChange={(v) => setFilterTahun(v)}
+                search={search}
+                onSearchChange={(v) => setSearch(v)}
+                showBeban={false}
+                filterStatus={filterStatus}
+                onFilterStatusChange={(v) => setFilterStatus(v)}
+                statuses={STATUSES}
+                showStatus={true}
+                onResetFilters={() => {
+                  setFilterBeban(sessionUser?.beban ?? "All");
+                  setFilterGroup("All");
+                  setFilterTahun("All");
+                  setFilterStatus("All");
+                  setSearch("");
+                }}
+                showScan={true}
+                assets={assets}
+                onScanFound={(found) => {
+                  tableRef.current?.goToAsset?.(found.asetId ?? found.id, {
+                    highlight: "bg",
+                  });
+                  setDetailAsset(found);
+                }}
+              />
+              {(() => {
+                const q = search.trim().toLowerCase();
+                const filtered = assets.filter((a) => {
+                  const matchBeban =
+                    filterBeban === "All" || a.beban === filterBeban;
+                  const matchGroup =
+                    filterGroup === "All" || a.grup === filterGroup;
+                  const tgl = a.tglPembelian
+                    ? String(a.tglPembelian).substring(0, 4)
+                    : null;
+                  const matchTahun =
+                    filterTahun === "All" ||
+                    (tgl && tgl === String(filterTahun));
+                  const matchStatus =
+                    filterStatus === "All" ||
+                    (a.statusAset && a.statusAset === filterStatus);
+                  if (!matchBeban) return false;
+                  if (!matchGroup) return false;
+                  if (!matchTahun) return false;
+                  if (!matchStatus) return false;
+                  if (!q) return true;
+                  const fields = [
+                    a.namaAset,
+                    a.asetId,
+                    a.accurateId,
+                    a.spesifikasi,
+                  ]
+                    .filter(Boolean)
+                    .map((s) => String(s).toLowerCase());
+                  return fields.some((f) => f.includes(q));
+                });
+                return (
+                  <AssetTable
+                    assets={filtered}
+                    showActions={false}
+                    loading={loading}
+                    title={`Daftar Aset (Beban: ${
+                      sessionUser?.beban ?? "All"
+                    })`}
+                    ref={tableRef}
+                    resetOnAssetsChange={false}
+                    leftControls={
+                      <button
+                        onClick={() => setShowCreate((s) => !s)}
+                        className="px-3 py-1 rounded-md bg-indigo-600 text-white text-sm flex items-center gap-2 mr-2"
+                      >
+                        <FaPlus className="h-4 w-4" />
+                      </button>
+                    }
+                    onView={(a) => setDetailAsset(a)}
+                  />
+                );
+              })()}
+              {detailAsset && (
+                <AssetDetail
+                  asset={detailAsset}
+                  onClose={() => setDetailAsset(null)}
+                  onEdit={(a) => {
+                    setDetailAsset(null);
+                    // For user role we do not have inline edit; if user has edit, call startEdit if available
+                  }}
+                  onDelete={(id) => {
+                    setDetailAsset(null);
+                    // no delete for user page; ignore
+                  }}
+                  onUpdated={(updated) => {
+                    if (!updated) return;
+                    setAssets((prev) =>
+                      prev.map((p) =>
+                        String(p.asetId ?? p.id) ===
+                        String(updated.asetId ?? updated.id)
+                          ? { ...p, ...(updated || {}) }
+                          : p
+                      )
+                    );
+                    setDetailAsset((prev) => ({
+                      ...(prev || {}),
+                      ...(updated || {}),
+                    }));
+                  }}
+                />
+              )}
+            </div>
+          </section>
+        </main>
+      </div>
+    </>
   );
 }

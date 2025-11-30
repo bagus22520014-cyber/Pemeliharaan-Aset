@@ -17,6 +17,10 @@ function normalizeAset(record) {
   if (r.AkunPerkiraan && !r.akunPerkiraan) r.akunPerkiraan = r.AkunPerkiraan;
   if (r.NilaiAset && !r.nilaiAset) r.nilaiAset = r.NilaiAset;
   if (r.TglPembelian && !r.tglPembelian) r.tglPembelian = r.TglPembelian;
+  if (r.StatusAset && !r.statusAset) r.statusAset = r.StatusAset;
+  if (r.Status && !r.statusAset) r.statusAset = r.Status;
+  if (r.Keterangan && !r.keterangan) r.keterangan = r.Keterangan;
+  if (r.Gambar && !r.gambar) r.gambar = r.Gambar;
   if (r.MasaManfaat && !r.masaManfaat) r.masaManfaat = r.MasaManfaat;
   if (r.ID && !r.id) r.id = r.ID;
   if (r.Id && !r.id) r.id = r.Id;
@@ -96,6 +100,9 @@ function toServerAset(payload) {
     akunPerkiraan: "AkunPerkiraan",
     nilaiAset: "NilaiAset",
     tglPembelian: "TglPembelian",
+    statusAset: "StatusAset",
+    status: "StatusAset",
+    keterangan: "Keterangan",
     masaManfaat: "MasaManfaat",
     id: "ID",
   };
@@ -199,25 +206,46 @@ export async function createAset(payload) {
   return normalizeAset(data);
 }
 
+// When sending an asset identifier in the URL, ensure it's properly encoded
+// so that characters like `/` are percent-encoded and treated as a single
+// path segment by the backend. Some backends map resources by "AsetId"
+// (e.g., '0008/SRG-NET/2019') — encoding prevents those slashes from
+// being interpreted as separate path segments by the dev server or proxy.
 export async function updateAset(id, payload) {
   // debug logging removed for production
   const headers = { "Content-Type": "application/json", ...getAuthHeaders() };
   const headersForLog = { ...headers };
   if (headersForLog.Authorization) delete headersForLog.Authorization;
   // debug logging removed for production
-  const res = await fetch(`${BASE}/${id}`, {
+  const encoded = encodeURIComponent(String(id));
+  // Temporary debug: show outgoing update request to help diagnose server issues
+  try {
+    // eslint-disable-next-line no-console
+    console.debug(
+      "updateAset -> URL:",
+      `${BASE}/${encoded}`,
+      "payload:",
+      JSON.stringify(toServerAset(cleanPayload(payload)))
+    );
+  } catch {}
+  const res = await fetch(`${BASE}/${encoded}`, {
     method: "PUT",
     credentials: "include",
     headers,
     body: JSON.stringify(toServerAset(cleanPayload(payload))),
   });
   const data = await handleResponse(res);
+  try {
+    // eslint-disable-next-line no-console
+    console.debug("updateAset -> response:", res.status, data);
+  } catch {}
   // debug logging removed for production
   return normalizeAset(data);
 }
 
 export async function deleteAset(id) {
-  const res = await fetch(`${BASE}/${id}`, {
+  const encoded = encodeURIComponent(String(id));
+  const res = await fetch(`${BASE}/${encoded}`, {
     method: "DELETE",
     credentials: "include",
     headers: getAuthHeaders(),
@@ -225,4 +253,106 @@ export async function deleteAset(id) {
   return handleResponse(res);
 }
 
-export default { listAset, createAset, updateAset, deleteAset };
+export async function uploadAsetImage(id, file) {
+  if (!id) throw new Error("No id provided");
+  if (!file) throw new Error("No file provided");
+  const encoded = encodeURIComponent(String(id));
+  const form = new FormData();
+  // Use 'Gambar' field name to match the backend example
+  form.append("Gambar", file);
+  const headers = getAuthHeaders();
+  // When sending FormData, do not set Content-Type header (browser will set it)
+  const res = await fetch(`${BASE}/${encoded}/gambar`, {
+    method: "PUT",
+    credentials: "include",
+    headers,
+    body: form,
+  });
+  const data = await handleResponse(res);
+  const normalized = normalizeAset(data) || {};
+  // If server didn't include id/asetId in response, fill it from the provided id
+  if (!normalized.id && !normalized.asetId) {
+    // if id looks numeric, set as id; otherwise set as asetId
+    const idStr = String(id ?? "");
+    if (/^\d+$/.test(idStr)) normalized.id = idStr;
+    else normalized.asetId = idStr;
+  }
+  return normalized;
+}
+
+// Perbaikan (repairs) api helpers
+function normalizePerbaikan(record) {
+  if (!record || typeof record !== "object") return record;
+  const r = { ...record };
+  if (r.ID && !r.id) r.id = r.ID;
+  if (r.Id && !r.id) r.id = r.Id;
+  if (r.AsetId && !r.asetId) r.asetId = r.AsetId;
+  if (r.Tanggal && !r.tanggal) r.tanggal = r.Tanggal;
+  // Normalize tanggal to YYYY-MM-DD date-only if it's an ISO string
+  if (r.tanggal && typeof r.tanggal === "string" && r.tanggal.includes("T")) {
+    try {
+      const d = new Date(r.tanggal);
+      if (!Number.isNaN(d.getTime())) {
+        const pad = (n) => String(n).padStart(2, "0");
+        r.tanggal = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+          d.getDate()
+        )}`;
+      }
+    } catch (err) {}
+  }
+  if (r.PurchaseOrder && !r.purchaseOrder) r.purchaseOrder = r.PurchaseOrder;
+  if (r.Vendor && !r.vendor) r.vendor = r.Vendor;
+  if (r.Bagian && !r.bagian) r.bagian = r.Bagian;
+  if (r.Nominal && !r.nominal) r.nominal = r.Nominal;
+  return r;
+}
+
+export async function listPerbaikan(asetId) {
+  const encoded = encodeURIComponent(String(asetId));
+  const res = await fetch(`/perbaikan/aset/${encoded}`, {
+    credentials: "include",
+    headers: getAuthHeaders(),
+  });
+  const data = await handleResponse(res);
+  if (Array.isArray(data)) return data.map(normalizePerbaikan);
+  if (Array.isArray(data?.items)) return data.items.map(normalizePerbaikan);
+  return normalizePerbaikan(data);
+}
+
+export async function createPerbaikan(asetId, payload) {
+  const headers = { "Content-Type": "application/json", ...getAuthHeaders() };
+  const body = JSON.stringify({
+    Tanggal: payload.tanggal,
+    PurchaseOrder: payload.purchaseOrder,
+    Vendor: payload.vendor,
+    Bagian: payload.bagian,
+    Nominal: payload.nominal,
+    AsetId: asetId,
+  });
+  const res = await fetch(`/perbaikan`, {
+    method: "POST",
+    credentials: "include",
+    headers,
+    body,
+  });
+  const data = await handleResponse(res);
+  return normalizePerbaikan(data);
+}
+
+export async function deletePerbaikan(id) {
+  const encoded = encodeURIComponent(String(id));
+  const res = await fetch(`/perbaikan/${encoded}`, {
+    method: "DELETE",
+    credentials: "include",
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(res);
+}
+
+export default {
+  listAset,
+  createAset,
+  updateAset,
+  deleteAset,
+  uploadAsetImage,
+};

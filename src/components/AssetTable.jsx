@@ -7,12 +7,16 @@ import React, {
 } from "react";
 import { formatRupiah } from "../utils/format";
 import { Sort } from "./Icons";
+import { FaTimes, FaEdit, FaTrash } from "react-icons/fa";
 
 function AssetTable(
   {
     assets = [],
     onEdit,
+    onView,
     onDelete,
+    onDeleteSelected,
+    leftControls = null,
     showActions = true,
     loading = false,
     title = "Daftar Aset",
@@ -28,6 +32,20 @@ function AssetTable(
   const [sortBy, setSortBy] = useState({ key: "", direction: "none" });
   const [highlighted, setHighlighted] = useState({ id: null, type: null });
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  // When assets prop changes, reconcile selectedIds to remove IDs that no longer exist
+  useEffect(() => {
+    if (!assets || selectedIds.size === 0) return;
+    const idsInAssets = new Set(
+      (assets || []).map((a) => String(a.asetId ?? a.id))
+    );
+    const newSelected = new Set(
+      Array.from(selectedIds).filter((id) => idsInAssets.has(id))
+    );
+    if (newSelected.size !== selectedIds.size) {
+      setSelectedIds(newSelected);
+      onSelectionChange?.(Array.from(newSelected));
+    }
+  }, [assets]);
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil((assets?.length || 0) / pageSize));
     if (resetOnAssetsChange) {
@@ -48,7 +66,6 @@ function AssetTable(
       setPage(p);
       onPageChange?.(p);
     },
-    getPage: () => page,
     goToAsset: (assetIdOrAsetId, { highlight = "bg", duration = 900 } = {}) => {
       if (!assetIdOrAsetId) return;
       // find index in the sorted assets by ID or asedId
@@ -134,58 +151,110 @@ function AssetTable(
         ? "text-indigo-600"
         : "text-gray-400"
     }`;
+  const getStatusClass = (status) => {
+    switch ((status || "").toLowerCase()) {
+      case "aktif":
+        return "bg-green-500";
+      case "rusak":
+        return "bg-red-500";
+      case "diperbaiki":
+        return "bg-yellow-500";
+      case "dipinjam":
+        return "bg-indigo-600";
+      case "dijual":
+        return "bg-gray-500";
+      default:
+        return "bg-gray-300";
+    }
+  };
   // Ensure we compute column span correctly for loading/no-data states
-  const colCount = (showActions ? 9 : 8) + (selectable ? 1 : 0);
+  // columns (AsetId, AccurateId, Nama, Grup, Beban, Status, Nilai, Pembelian, Masa, [Actions])
+  // We no longer use a checkbox column for selection indicators; selection is shown via row background
+  const colCount = showActions ? 9 : 8;
+  // add 1 column for StatusAset
+  const colCountWithStatus = colCount + 1;
 
-  const allVisibleSelected =
-    visibleAssets.length > 0 &&
-    visibleAssets.every((a) => selectedIds.has(String(a.id ?? a.asetId)));
-  const someVisibleSelected = visibleAssets.some((a) =>
-    selectedIds.has(String(a.id ?? a.asetId))
-  );
+  // const allVisibleSelected = ... (checkbox column removed)
+  // const someVisibleSelected = ... (checkbox column removed)
 
   return (
     <div className="overflow-auto mt-4 rounded-2xl ring-1 ring-gray-300 bg-white shadow-sm">
-      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-        <div className="text-sm font-semibold text-gray-700">{title}</div>
-        <div className="text-xs text-gray-500">
-          Showing {startIndex + 1}-{endIndex} of {total} items
+      <div className=" h-[55px] px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {leftControls}
+          <div className="text-lg font-semibold text-gray-700">{title}</div>
+        </div>
+        <div className="flex items-center gap-3">
+          {selectedIds.size > 0 && (
+            <button
+              onClick={() => {
+                setSelectedIds(new Set());
+                onSelectionChange?.([]);
+              }}
+              className="h-10 w-10 rounded-md border bg-white text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-center relative"
+              title={`Batal Pilih (${selectedIds.size})`}
+              aria-label={`Batal Pilih (${selectedIds.size})`}
+            >
+              <FaTimes className="h-4 w-4 text-gray-600" />
+              {selectedIds.size > 0 && (
+                <span className="absolute -top-1 -right-1 bg-indigo-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                  {selectedIds.size}
+                </span>
+              )}
+            </button>
+          )}
+          {selectedIds.size > 0 && onDeleteSelected && (
+            <button
+              onClick={() => onDeleteSelected(Array.from(selectedIds))}
+              className="h-10 w-10 rounded-md bg-red-600 text-white text-sm font-semibold hover:bg-red-500 flex items-center justify-center"
+              title={`Hapus ${selectedIds.size} terpilih`}
+              aria-label={`Hapus ${selectedIds.size} terpilih`}
+            >
+              <FaTrash className="h-4 w-4" />
+              {selectedIds.size > 0 && (
+                <span className="absolute -top-1 -right-1 bg-white text-red-600 text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                  {selectedIds.size}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[900px] text-left text-sm">
           <thead className="bg-gray-50 text-gray-700">
             <tr>
-              {selectable && (
-                <th className="p-3 font-semibold text-center">
-                  <input
-                    type="checkbox"
-                    checked={allVisibleSelected}
-                    ref={(el) => {
-                      if (!el) return;
-                      el.indeterminate =
-                        !allVisibleSelected && someVisibleSelected;
-                    }}
-                    onChange={(e) => {
-                      // toggle selection for visible rows
-                      const newSet = new Set(selectedIds);
-                      if (e.target.checked) {
-                        visibleAssets.forEach((a) =>
-                          newSet.add(String(a.id ?? a.asetId))
-                        );
-                      } else {
-                        visibleAssets.forEach((a) =>
-                          newSet.delete(String(a.id ?? a.asetId))
-                        );
-                      }
-                      setSelectedIds(newSet);
-                      onSelectionChange?.(Array.from(newSet));
-                    }}
-                  />
-                </th>
-              )}
+              {/* Removed checkbox column header - selection is indicated by row background color */}
               <th
-                className="p-3 font-semibold cursor-pointer hover:text-indigo-600"
+                className="p-3 w-10 text-center cursor-pointer hover:text-indigo-600 border-l border-gray-200"
+                onClick={() => handleSort("statusAset")}
+                tabIndex={0}
+                onKeyDown={(e) =>
+                  (e.key === "Enter" || e.key === " ") &&
+                  handleSort("statusAset")
+                }
+                aria-sort={
+                  sortBy.key === "statusAset"
+                    ? sortBy.direction === "asc"
+                      ? "ascending"
+                      : sortBy.direction === "desc"
+                      ? "descending"
+                      : "none"
+                    : "none"
+                }
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <span className="sr-only">Status</span>
+                  <Sort
+                    className={getIconClass("statusAset")}
+                    direction={
+                      sortBy.key === "statusAset" ? sortBy.direction : "none"
+                    }
+                  />
+                </div>
+              </th>
+              <th
+                className="p-3 font-semibold cursor-pointer hover:text-indigo-600 border-l border-gray-200"
                 onClick={() => handleSort("asetId")}
                 tabIndex={0}
                 onKeyDown={(e) =>
@@ -212,7 +281,7 @@ function AssetTable(
                 </div>
               </th>
               <th
-                className="p-3 font-semibold cursor-pointer hover:text-indigo-600"
+                className="p-3 font-semibold cursor-pointer hover:text-indigo-600 border-l border-gray-200"
                 onClick={() => handleSort("accurateId")}
                 tabIndex={0}
                 onKeyDown={(e) =>
@@ -240,7 +309,7 @@ function AssetTable(
                 </div>
               </th>
               <th
-                className="p-3 font-semibold cursor-pointer hover:text-indigo-600"
+                className="p-3 font-semibold cursor-pointer hover:text-indigo-600 border-l border-gray-200"
                 onClick={() => handleSort("namaAset")}
                 tabIndex={0}
                 onKeyDown={(e) =>
@@ -266,10 +335,15 @@ function AssetTable(
                   />
                 </div>
               </th>
-              <th className="p-3 font-semibold">Grup</th>
-              <th className="p-3 font-semibold">Beban</th>
+              <th className="p-3 font-semibold border-l border-gray-200">
+                Grup
+              </th>
+              <th className="p-3 font-semibold border-l border-gray-200">
+                Beban
+              </th>
+              {/* Removed the old middle status column: status is now shown as a colored circle at the left */}
               <th
-                className="p-3 font-semibold cursor-pointer hover:text-indigo-600"
+                className="p-3 font-semibold cursor-pointer hover:text-indigo-600 border-l border-gray-200"
                 onClick={() => handleSort("nilaiAset")}
                 tabIndex={0}
                 onKeyDown={(e) =>
@@ -297,7 +371,7 @@ function AssetTable(
                 </div>
               </th>
               <th
-                className="p-3 font-semibold cursor-pointer hover:text-indigo-600"
+                className="p-3 font-semibold cursor-pointer hover:text-indigo-600 border-l border-gray-200"
                 onClick={() => handleSort("tglPembelian")}
                 tabIndex={0}
                 onKeyDown={(e) =>
@@ -325,7 +399,7 @@ function AssetTable(
                 </div>
               </th>
               <th
-                className="p-3 font-semibold cursor-pointer hover:text-indigo-600"
+                className="p-3 font-semibold cursor-pointer hover:text-indigo-600 border-l border-gray-200"
                 onClick={() => handleSort("masaManfaat")}
                 tabIndex={0}
                 onKeyDown={(e) =>
@@ -353,7 +427,9 @@ function AssetTable(
                 </div>
               </th>
               {showActions && (
-                <th className="p-3 font-semibold text-center">Actions</th>
+                <th className="p-3 font-semibold text-center border-l border-gray-200 w-24">
+                  Actions
+                </th>
               )}
             </tr>
           </thead>
@@ -362,7 +438,7 @@ function AssetTable(
             {loading ? (
               <tr>
                 <td
-                  colSpan={colCount}
+                  colSpan={colCountWithStatus}
                   className="p-6 text-center text-gray-500"
                 >
                   Loading...
@@ -371,7 +447,7 @@ function AssetTable(
             ) : total === 0 ? (
               <tr>
                 <td
-                  colSpan={colCount}
+                  colSpan={colCountWithStatus}
                   className="p-6 text-center text-gray-500 italic"
                 >
                   Tidak ada data aset
@@ -379,91 +455,192 @@ function AssetTable(
               </tr>
             ) : (
               visibleAssets.map((a) => {
-                const aid = String(a.id ?? a.asetId);
+                const aid = String(a.asetId ?? a.id);
                 const isHighlighted =
                   highlighted.id && String(highlighted.id) === aid;
                 const isSelected = selectedIds.has(aid);
                 return (
                   <tr
-                    key={a.id ?? a.asetId}
-                    data-asset-id={a.id ?? a.asetId}
-                    className={`border-t hover:bg-gray-100 transition odd:bg-white even:bg-gray-50 ${
+                    tabIndex={0}
+                    key={a.asetId ?? a.id}
+                    data-asset-id={a.asetId ?? a.id}
+                    className={`border-t transition odd:bg-white even:bg-gray-50 ${
                       isHighlighted
                         ? highlighted.type === "bg"
                           ? "animate-blink-bg"
                           : "animate-blink-text"
                         : ""
-                    } ${isSelected ? "bg-indigo-50" : ""}`}
+                    } ${
+                      isSelected
+                        ? "bg-gray-200! hover:bg-gray-300!"
+                        : "hover:bg-gray-100"
+                    }`}
+                    aria-selected={isSelected}
+                    // Row handlers: open detail on short click, toggle selection on long-press
+                    onMouseDown={(e) => {
+                      if (e.button !== 0) return;
+                      const action = e.target.closest(".action-cell");
+                      const checkbox = e.target.closest(
+                        'input[type="checkbox"]'
+                      );
+                      if (action || checkbox) return;
+                      // set a long-press timer on the row
+                      // store timer on DOM element to avoid closures across rerenders
+                      const el = e.currentTarget;
+                      if (!selectable) {
+                        // not selectable: don't start long-press, just no-op
+                        return;
+                      }
+                      el.__pressTimer = setTimeout(() => {
+                        // toggle selection
+                        const newSet = new Set(selectedIds);
+                        if (newSet.has(aid)) newSet.delete(aid);
+                        else newSet.add(aid);
+                        setSelectedIds(newSet);
+                        onSelectionChange?.(Array.from(newSet));
+                        // flag that a long press occurred to avoid opening detail
+                        el.__longPress = true;
+                        el.__pressTimer = null;
+                      }, 600);
+                    }}
+                    onKeyDown={(e) => {
+                      // keyboard support: Enter => open view; Space => toggle selection
+                      const action = e.target.closest(".action-cell");
+                      if (e.key === "Enter") {
+                        if (!action) onView?.(a);
+                        return;
+                      }
+                      if (e.key === " ") {
+                        e.preventDefault();
+                        if (!selectable || action) return;
+                        const newSet = new Set(selectedIds);
+                        if (newSet.has(aid)) newSet.delete(aid);
+                        else newSet.add(aid);
+                        setSelectedIds(newSet);
+                        onSelectionChange?.(Array.from(newSet));
+                      }
+                    }}
+                    onMouseUp={(e) => {
+                      const action = e.target.closest(".action-cell");
+                      const checkbox = e.target.closest(
+                        'input[type="checkbox"]'
+                      );
+                      const el = e.currentTarget;
+                      if (el.__pressTimer) {
+                        clearTimeout(el.__pressTimer);
+                        el.__pressTimer = null;
+                        // short click => open detail
+                        if (!action && !checkbox) onView?.(a);
+                      } else if (el.__longPress) {
+                        // if long-press happened, clear longPress flag after a short delay
+                        if (el.__longPress)
+                          setTimeout(() => (el.__longPress = false), 50);
+                      } else {
+                        // No timer and no long-press: this is a short click (non-selectable or no timer)
+                        if (!action && !checkbox) onView?.(a);
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      const el = e.currentTarget;
+                      if (el.__pressTimer) {
+                        clearTimeout(el.__pressTimer);
+                        el.__pressTimer = null;
+                      }
+                    }}
+                    onTouchStart={(e) => {
+                      const action = e.target.closest(".action-cell");
+                      const checkbox = e.target.closest(
+                        'input[type="checkbox"]'
+                      );
+                      if (action || checkbox) return;
+                      if (!selectable) return;
+                      const el = e.currentTarget;
+                      el.__pressTimer = setTimeout(() => {
+                        const newSet = new Set(selectedIds);
+                        if (newSet.has(aid)) newSet.delete(aid);
+                        else newSet.add(aid);
+                        setSelectedIds(newSet);
+                        onSelectionChange?.(Array.from(newSet));
+                        el.__longPress = true;
+                        el.__pressTimer = null;
+                      }, 600);
+                    }}
+                    onTouchEnd={(e) => {
+                      const el = e.currentTarget;
+                      if (el.__pressTimer) {
+                        clearTimeout(el.__pressTimer);
+                        el.__pressTimer = null;
+                        const action = e.target.closest(".action-cell");
+                        const checkbox = e.target.closest(
+                          'input[type="checkbox"]'
+                        );
+                        if (!action && !checkbox) onView?.(a);
+                        return;
+                      }
+                      if (el.__longPress)
+                        setTimeout(() => (el.__longPress = false), 50);
+                      else {
+                        // non-longpress short tap
+                        const action = e.target.closest(".action-cell");
+                        const checkbox = e.target.closest(
+                          'input[type="checkbox"]'
+                        );
+                        if (!action && !checkbox) onView?.(a);
+                      }
+                    }}
                   >
-                    {selectable && (
-                      <td className="p-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={(e) => {
-                            const newSet = new Set(selectedIds);
-                            if (e.target.checked) newSet.add(aid);
-                            else newSet.delete(aid);
-                            setSelectedIds(newSet);
-                            onSelectionChange?.(Array.from(newSet));
-                          }}
-                        />
-                      </td>
-                    )}
-                    <td className="p-3">{a.asetId}</td>
-                    <td className="p-3">{a.accurateId}</td>
-                    <td className="p-3">{a.namaAset}</td>
-                    <td className="p-3">{a.grup}</td>
-                    <td className="p-3">
+                    {/* Status circle */}
+                    <td className="p-3 text-center border-l border-gray-200">
+                      <span
+                        title={a.keterangan || ""}
+                        className={`inline-block w-3 h-3 rounded-full ${getStatusClass(
+                          a.statusAset
+                        )}`}
+                      />
+                    </td>
+                    <td className="p-3 border-l border-gray-200">{a.asetId}</td>
+                    <td className="p-3 border-l border-gray-200">
+                      {a.accurateId}
+                    </td>
+                    <td className="p-3 border-l border-gray-200">
+                      {a.namaAset}
+                    </td>
+                    <td className="p-3 border-l border-gray-200">{a.grup}</td>
+                    <td className="p-3 border-l border-gray-200">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-600 border border-indigo-100">
                         {a.beban}
                       </span>
                     </td>
-                    <td className="p-3 font-semibold text-gray-900">
+                    {/* Old status badge removed; status circle is now the first column */}
+                    <td className="p-3 font-semibold text-gray-900 border-l border-gray-200">
                       {formatRupiah(a.nilaiAset)}
                     </td>
-                    <td className="p-3">{a.tglPembelian}</td>
-                    <td className="p-3">{a.masaManfaat}</td>
+                    <td className="p-3 border-l border-gray-200">
+                      {a.tglPembelian}
+                    </td>
+                    <td className="p-3 border-l border-gray-200">
+                      {a.masaManfaat} bulan
+                    </td>
+                    {/* Status column will be inserted earlier next to Beban */}
                     {showActions && (
-                      <td className="p-3 text-center">
+                      <td className="p-3 text-center action-cell border-l border-gray-200">
                         <div className="flex gap-2 justify-center">
+                          {/* View button removed - row click/short click opens detail */}
                           <button
                             onClick={() => onEdit?.(a)}
-                            className="px-3 py-1.5 rounded-full text-xs font-semibold border border-indigo-500 text-indigo-600 hover:bg-indigo-50 transition flex items-center gap-2"
+                            title="Edit"
+                            aria-label={`Edit ${a?.asetId ?? a?.id}`}
+                            className="p-2 rounded-md border border-indigo-500 text-indigo-600 hover:bg-indigo-50 transition flex items-center justify-center"
                           >
-                            <svg
-                              className="h-4 w-4"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth={1.5}
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M12 20h9" />
-                              <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
-                            </svg>
-                            <span>Edit</span>
+                            <FaEdit className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => onDelete?.(a.id ?? a.asetId)}
-                            className="px-3 py-1.5 rounded-full text-xs font-semibold bg-red-500 text-white hover:bg-red-600 transition flex items-center gap-2"
+                            onClick={() => onDelete?.(a.asetId ?? a.id)}
+                            title="Delete"
+                            aria-label={`Delete ${a?.asetId ?? a?.id}`}
+                            className="p-2 rounded-md bg-red-500 text-white hover:bg-red-600 transition flex items-center justify-center"
                           >
-                            <svg
-                              className="h-4 w-4"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth={1.5}
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6l-2 14H7L5 6" />
-                              <path d="M10 11v6" />
-                              <path d="M14 11v6" />
-                            </svg>
-                            <span>Delete</span>
+                            <FaTrash className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
@@ -476,7 +653,7 @@ function AssetTable(
         </table>
         <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-4">
           <div className="text-sm text-gray-600 w-1/4">
-            Page {page} of {totalPages}
+            Showing {startIndex + 1}-{endIndex} of {total} items
           </div>
           <div className="flex-1 flex items-center justify-center gap-3 py-2">
             {/* Prev */}
