@@ -221,10 +221,12 @@ export default function CreateAsset({
             <input
               type="text"
               placeholder="Keterangan (opsional)"
-              value={form.keterangan}
-              onChange={(e) => setForm({ ...form, keterangan: e.target.value })}
+              value={form.keterangan ?? ""}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, keterangan: e.target.value }))
+              }
               className="mt-1 w-full p-2 rounded-lg border border-gray-400 text-base
-                placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500"
+                  placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500 bg-white"
             />
           </label>
         </div>

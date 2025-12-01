@@ -243,6 +243,8 @@ export default function Admin({ user, onLogout, sessionUser }) {
   const startEdit = (asset) => {
     // Use a shallow copy to avoid accidental mutations; pre-populate editing and form
     setEditing({ ...asset });
+    const safeKeterangan =
+      asset?.keterangan ?? asset?.Keterangan ?? asset?.KET ?? asset?.ket ?? "";
     setForm({
       asetId: asset.asetId ?? "",
       accurateId: asset.accurateId ?? "",
@@ -255,7 +257,7 @@ export default function Admin({ user, onLogout, sessionUser }) {
       tglPembelian: asset.tglPembelian ?? "",
       masaManfaat: asset.masaManfaat ?? "",
       statusAset: asset.statusAset ?? "aktif",
-      keterangan: asset.keterangan ?? "",
+      keterangan: safeKeterangan,
     });
     setShowCreate(true);
   };
