@@ -111,7 +111,9 @@ export default function Login({ onLogin }) {
         // If username is "admin" we create an admin session; otherwise regular user.
         const roleFallback =
           username?.toLowerCase?.() === "admin" ? "admin" : "user";
-        const bebanFallback = username?.toLowerCase?.() === "admin" ? "" : "HO";
+        // Default fallback to simulate a multi-beban user when dev-fallback login used
+        const bebanFallback =
+          username?.toLowerCase?.() === "admin" ? "" : "MLG-NET,MLG-MEDIA";
         onLogin({
           id: Date.now().toString(),
           username,

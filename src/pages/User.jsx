@@ -1,69 +1,21 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { generateAsetId } from "../utils/format";
-import Alert from "../components/Alert";
+import {
+  generateAsetId,
+  getCurrentDate,
+  GROUPS,
+  BEBANS,
+  AKUN,
+  STATUSES,
+} from "@/utils/format";
+import Alert from "@/components/Alert";
 import { FaPlus } from "react-icons/fa";
-import Navbar from "../components/Navbar";
-import Confirm from "../components/Confirm";
-import CreateAsset from "../components/CreateAsset";
-import AssetDetail from "../components/AssetDetail";
-import { createAset, listAset } from "../api/aset";
-import SearchFilterBar from "../components/SearchFilterBar";
-import AssetTable from "../components/AssetTable";
-
-const GROUPS = [
-  "BANGUNAN",
-  "DISTRIBUSI JARINGAN",
-  "HEADEND",
-  "KENDARAAN",
-  "KOMPUTER",
-  "PERALATAN & INVENTARIS KANTOR",
-  "TANAH",
-];
-const BEBANS = [
-  "HO",
-  "BJR-NET",
-  "BNT-NET",
-  "BTM-NET",
-  "GTO-NET",
-  "KDR-NET",
-  "LMP-NET",
-  "MLG-NET",
-  "PDG-NET",
-  "PKB-NET",
-  "PKP-NET",
-  "PLB-NET",
-  "SBY-NET",
-  "SMD-NET",
-  "SRG-NET",
-  "MLMKOB",
-  "MLMMET",
-  "MLMSDKB",
-  "MLMSL",
-  "BJR-MEDIA",
-  "BNT-MEDIA",
-  "BTM-MEDIA",
-  "GTO-MEDIA",
-  "KDR-MEDIA",
-  "LMP-MEDIA",
-  "MLG-MEDIA",
-  "PDG-MEDIA",
-  "PKB-MEDIA",
-  "PKP-MEDIA",
-  "PLB-MEDIA",
-  "SBY-MEDIA",
-  "SMD-MEDIA",
-  "SRG-MEDIA",
-];
-const AKUN = [
-  "1701-01 (Tanah)",
-  "1701-02 (Bangunan)",
-  "1701-03 (Kendaraan)",
-  "1701-04 (Distribusi Jaringan / Headend)",
-  "1701-05 (Peralatan & Inventaris Kantor)",
-  "1701-06 (Renovasi & Instalasi Listrik)",
-  "1701-07 (Perlengkapan & Inventaris IT)",
-];
-const STATUSES = ["aktif", "rusak", "diperbaiki", "dipinjam", "dijual"];
+import Navbar from "@/components/Navbar";
+import Confirm from "@/components/Confirm";
+import CreateAsset from "@/components/tabelAset/addAset/CreateAsset";
+import AssetDetail from "@/components/tabelAset/tabel/detail/AssetDetail";
+import { createAset, listAset } from "@/api/aset";
+import SearchFilterBar from "@/components/tabelAset/filter/SearchFilterBar";
+import AssetTable from "@/components/tabelAset/tabel/AssetTable";
 
 export default function User({ user, sessionUser, onLogout }) {
   const [showCreate, setShowCreate] = useState(false);
@@ -72,14 +24,17 @@ export default function User({ user, sessionUser, onLogout }) {
     accurateId: "",
     namaAset: "",
     spesifikasi: "",
-    grup: GROUPS[0],
-    beban: sessionUser?.beban ?? BEBANS[0],
-    akunPerkiraan: AKUN[0],
+    grup: "",
+    beban: "",
+    akunPerkiraan: "",
     nilaiAset: "",
-    tglPembelian: "",
+    tglPembelian: getCurrentDate(),
     masaManfaat: "",
     statusAset: "aktif",
     keterangan: "",
+    pengguna: "",
+    lokasi: "",
+    tempat: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -89,8 +44,10 @@ export default function User({ user, sessionUser, onLogout }) {
   const [logoutConfirm, setLogoutConfirm] = useState(false);
   const tableRef = useRef(null);
   const [detailAsset, setDetailAsset] = useState(null);
+  const [confirmCreate, setConfirmCreate] = useState(false);
+  const [pendingFile, setPendingFile] = useState(null);
   // Scan control moved into SearchFilterBar
-  const [filterBeban, setFilterBeban] = useState(sessionUser?.beban ?? "All");
+  const [filterBeban, setFilterBeban] = useState("All");
   const [filterGroup, setFilterGroup] = useState("All");
   const [filterTahun, setFilterTahun] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
@@ -102,34 +59,119 @@ export default function User({ user, sessionUser, onLogout }) {
 
   useEffect(() => {
     if (showCreate) {
-      setForm((f) => ({ ...f, asetId: suggestedAsetId }));
+      // If useMaster behavior is desired, try to compute suggestedAsetId using asset data
+      (async () => {
+        try {
+          const data = await listAset({ includeBebanHeader: false });
+          const masterList = Array.isArray(data) ? data : data?.items ?? [];
+          const suggested = generateAsetId(
+            masterList,
+            form.beban,
+            form.tglPembelian
+          );
+          setForm((f) => ({ ...f, asetId: suggested }));
+        } catch (err) {
+          setForm((f) => ({ ...f, asetId: suggestedAsetId }));
+        }
+      })();
     }
   }, [showCreate, suggestedAsetId]);
 
   const resetForm = () =>
-    setForm({
+    setForm((prev) => ({
       asetId: "",
       accurateId: "",
       namaAset: "",
       spesifikasi: "",
-      grup: GROUPS[0],
-      beban: BEBANS[0],
-      akunPerkiraan: AKUN[0],
+      grup: "",
+      beban: "",
+      akunPerkiraan: "",
       nilaiAset: "",
-      tglPembelian: "",
+      tglPembelian: getCurrentDate(),
       masaManfaat: "",
       statusAset: "aktif",
       keterangan: "",
-    });
+      pengguna: "",
+      lokasi: "",
+      tempat: "",
+    }));
 
-  const handleCreate = async (e) => {
+  const handleCreateRequest = (e, file) => {
     e?.preventDefault();
+    setError(null);
+
+    // Validasi field wajib
+    const requiredFields = [
+      { field: "asetId", label: "Aset ID" },
+      { field: "namaAset", label: "Nama Aset" },
+      { field: "grup", label: "Kategori" },
+      { field: "akunPerkiraan", label: "Akun Perkiraan" },
+      { field: "beban", label: "Departemen" },
+      { field: "tglPembelian", label: "Tanggal Perolehan" },
+      { field: "nilaiAset", label: "Harga Perolehan" },
+    ];
+
+    const emptyFields = requiredFields.filter(
+      (rf) => !form[rf.field] || String(form[rf.field]).trim() === ""
+    );
+
+    if (emptyFields.length > 0) {
+      const fieldNames = emptyFields.map((f) => f.label).join(", ");
+      setError(`Field wajib diisi: ${fieldNames}`);
+      setAlert({ type: "error", message: `Field wajib diisi: ${fieldNames}` });
+      return;
+    }
+
+    // Show confirmation
+    setPendingFile(file);
+    setConfirmCreate(true);
+  };
+
+  const handleCreate = async () => {
+    setConfirmCreate(false);
     setLoading(true);
     setError(null);
+
     try {
-      const finalPayload = { ...form, asetId: form.asetId || suggestedAsetId };
+      const finalPayload = {
+        ...form,
+        asetId: form.asetId || suggestedAsetId,
+        statusAset: "aktif",
+      };
       if (!form.asetId) setForm((f) => ({ ...f, asetId: suggestedAsetId }));
+
       const created = await createAset(finalPayload);
+
+      // Upload image if file is provided
+      if (pendingFile) {
+        const assetId = created?.asetId || created?.id || finalPayload.asetId;
+
+        if (!assetId) {
+          console.error("No asset ID found for image upload");
+          setAlert({
+            type: "warning",
+            message:
+              "Aset berhasil ditambahkan tetapi tidak dapat upload gambar (ID tidak ditemukan)",
+          });
+        } else {
+          const { uploadAsetImage } = await import("../api/aset");
+          try {
+            const uploadResult = await uploadAsetImage(assetId, pendingFile);
+            // Update the created asset with the image info if returned
+            if (uploadResult?.gambar) {
+              created.gambar = uploadResult.gambar;
+            }
+          } catch (uploadErr) {
+            console.error("Image upload failed:", uploadErr);
+            setAlert({
+              type: "warning",
+              message: `Aset berhasil ditambahkan tetapi upload gambar gagal: ${
+                uploadErr.message || uploadErr
+              }`,
+            });
+          }
+        }
+      }
       if (created && (created.id || created.asetId)) {
         setAssets((prev) => {
           const id = String(created.asetId ?? created.id);
@@ -148,6 +190,8 @@ export default function User({ user, sessionUser, onLogout }) {
         await loadAssets();
       }
       resetForm();
+      setShowCreate(false);
+      setPendingFile(null);
     } catch (err) {
       const message = err?.message || String(err);
       setError(
@@ -161,26 +205,105 @@ export default function User({ user, sessionUser, onLogout }) {
     }
   };
 
+  // parse user beban string (CSV) or array into normalized array
+  const parseBebans = (userBeban) => {
+    if (!userBeban) return [];
+    // If already array, normalize and return
+    if (Array.isArray(userBeban))
+      return Array.from(
+        new Set(userBeban.map((b) => String(b).trim()).filter(Boolean))
+      );
+    // Try decodeURIComponent in case backend returned encoded commas (e.g., %2C)
+    let raw = String(userBeban || "").trim();
+    try {
+      const d = decodeURIComponent(raw);
+      if (d && typeof d === "string") raw = d;
+    } catch (err) {
+      // ignore decode error
+    }
+    // Split on common separators (comma, semicolon, pipe)
+    return Array.from(
+      new Set(
+        raw
+          .split(/[;,|]/)
+          .map((b) => String(b || "").trim())
+          .filter(Boolean)
+      )
+    );
+  };
+
+  // helper - return allowed bebans for a user's beban based on location prefix
+  const getAllowedBebansForUser = (userBeban) => {
+    const bebanList = parseBebans(userBeban);
+    if (!bebanList || bebanList.length === 0) return [];
+    const allowed = new Set();
+    for (const ubRaw of bebanList) {
+      const ub = String(ubRaw).trim();
+      if (!ub) continue;
+      let prefix = ub;
+      if (ub.includes("-")) prefix = ub.split("-")[0];
+      else prefix = ub.slice(0, 3); // fallback: first 3 letters for non-hyphenated codes
+      const prefixNorm = String(prefix).trim().toLowerCase();
+      BEBANS.forEach((b) => {
+        const bb = String(b || "").trim();
+        let bprefix = bb;
+        if (bb.includes("-")) bprefix = bb.split("-")[0];
+        else bprefix = bb.slice(0, 3);
+        if (String(bprefix).trim().toLowerCase() === prefixNorm)
+          allowed.add(bb);
+      });
+    }
+    // also ensure any explicit user-provided beban entries are included
+    for (const b of bebanList) {
+      if (b) allowed.add(String(b).trim());
+    }
+    return Array.from(allowed);
+  };
+
   // load assets for the user dashboard
   const loadAssets = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await listAset();
+      // fetch all assets from the master table so the UI displays
+      // the master dataset counts and suggestions
+      const data = await listAset({ includeBebanHeader: false });
       const list = Array.isArray(data) ? data : data?.items ?? [];
-      // if sessionUser exists and has a beban and not admin, filter by beban
+      // if sessionUser exists and has a beban and not admin, filter assets to
+      // include assets assigned to the user's beban AND any beban that shares
+      // the same location prefix (e.g., BNT-NET <-> BNT-MEDIA)
       const hasRoleFilter = sessionUser?.role !== "admin" && sessionUser?.beban;
-      const normalizedUserBeban = hasRoleFilter
-        ? String(sessionUser.beban).trim().toLowerCase()
-        : null;
-      const filteredList = hasRoleFilter
-        ? list.filter(
-            (a) =>
-              String(a?.beban ?? "")
-                .trim()
-                .toLowerCase() === normalizedUserBeban
+      let filteredList = list;
+      if (hasRoleFilter) {
+        const allowedFromPrefix = getAllowedBebansForUser(sessionUser.beban);
+        const parsedBebans = parseBebans(sessionUser?.beban);
+        const unionAllowed = Array.from(
+          new Set([...(allowedFromPrefix || []), ...(parsedBebans || [])])
+        );
+        const allowedTargets = new Set(
+          unionAllowed.map((b) =>
+            String(b || "")
+              .trim()
+              .toLowerCase()
           )
-        : list;
+        );
+        const sessionUserBebansList = parseBebans(sessionUser.beban).map((b) =>
+          String(b).trim().toLowerCase()
+        );
+        const sessionUserBebansSet = new Set(sessionUserBebansList);
+        filteredList = list.filter((a) => {
+          const ab = String(a?.beban ?? "")
+            .trim()
+            .toLowerCase();
+          // If asset has no beban, don't show it to a restricted user
+          if (!ab) return false;
+          // Show if the asset's beban exactly matches any of the session user's bebans
+          if (sessionUserBebansSet.has(ab)) return true;
+          // Show if the asset's beban is in the allowed set (same prefix)
+          if (allowedTargets.has(ab)) return true;
+          return false;
+        });
+      }
       setAssets(filteredList);
     } catch (err) {
       setError(String(err));
@@ -191,12 +314,27 @@ export default function User({ user, sessionUser, onLogout }) {
 
   React.useEffect(() => {
     loadAssets();
-    // ensure the user's beban is used in the form when sessionUser changes
-    if (sessionUser?.beban) {
-      setForm((prev) => ({ ...prev, beban: sessionUser.beban }));
-      setFilterBeban(sessionUser.beban);
-    }
   }, [sessionUser]);
+
+  // Allowed bebans for the current user (if not admin)
+  const allowedBebans = React.useMemo(() => {
+    if (sessionUser?.role === "admin") return BEBANS;
+
+    // Parse user beban - return only exact matches from database
+    const parsed = parseBebans(sessionUser?.beban);
+
+    // Filter to only include valid bebans from BEBANS constant
+    const validBebans = parsed.filter((b) =>
+      BEBANS.some((validBeban) => validBeban === b)
+    );
+
+    if (validBebans && validBebans.length) return validBebans;
+
+    // Fallback if no valid bebans found
+    return parsed.length > 0 ? parsed : [BEBANS[0]];
+  }, [sessionUser?.beban, sessionUser?.role, sessionUser?.username]);
+
+  // Debug: Log when allowedBebans changes
 
   // ESC key to close panel
   useEffect(() => {
@@ -237,55 +375,39 @@ export default function User({ user, sessionUser, onLogout }) {
         />
       )}
 
-      <div className="min-h-screen bg-white p-6 pt-0">
+      <div className="bg-white p-6 pt-0">
         <main>
           {/* Welcome message removed — header / navbar now displays username */}
 
-          <section
-            className={`mt-6 grid grid-cols-1 ${
-              showCreate ? "md:grid-cols-4" : "md:grid-cols-1"
-            } gap-6`}
-          >
+          <section className="mt-6 relative">
             {showCreate && (
-              <div className="md:col-span-1 bg-gray-50 p-2 rounded shadow">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-base font-semibold">Create Asset</h3>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setShowCreate(false)}
-                      className="px-3 py-1.5 rounded border border-gray-300 text-sm bg-white"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
+              <div className="mb-6">
                 <CreateAsset
                   form={form}
                   setForm={setForm}
-                  onSubmit={handleCreate}
-                  onCancel={() => resetForm()}
+                  onSubmit={handleCreateRequest}
+                  onCancel={() => {
+                    setShowCreate(false);
+                    resetForm();
+                  }}
                   isEditing={false}
                   loading={loading}
                   error={error}
                   groups={GROUPS}
-                  bebans={BEBANS}
                   akun={AKUN}
-                  disabledBeban={true}
+                  bebans={allowedBebans}
+                  disabledBeban={allowedBebans.length <= 1}
                   hideHeader={true}
-                  autoAsetId={suggestedAsetId}
                   readOnlyAsetId={true}
+                  useMaster={true}
                 />
               </div>
             )}
-            <div
-              className={`transition-all ${
-                showCreate ? "md:col-span-3" : "md:col-span-1 md:w-full"
-              }`}
-            >
+            <div>
               <SearchFilterBar
                 filterBeban={filterBeban}
                 onFilterChange={(v) => setFilterBeban(v)}
-                bebans={BEBANS}
+                bebans={allowedBebans}
                 filterGroup={filterGroup}
                 onFilterGroupChange={(v) => setFilterGroup(v)}
                 groups={GROUPS}
@@ -293,13 +415,14 @@ export default function User({ user, sessionUser, onLogout }) {
                 onFilterYearChange={(v) => setFilterTahun(v)}
                 search={search}
                 onSearchChange={(v) => setSearch(v)}
-                showBeban={false}
+                showBeban={true}
                 filterStatus={filterStatus}
                 onFilterStatusChange={(v) => setFilterStatus(v)}
                 statuses={STATUSES}
                 showStatus={true}
                 onResetFilters={() => {
-                  setFilterBeban(sessionUser?.beban ?? "All");
+                  // reset to show all allowed bebans by default (union), not a single CSV value
+                  setFilterBeban("All");
                   setFilterGroup("All");
                   setFilterTahun("All");
                   setFilterStatus("All");
@@ -313,12 +436,47 @@ export default function User({ user, sessionUser, onLogout }) {
                   });
                   setDetailAsset(found);
                 }}
+                useMaster={true}
               />
               {(() => {
                 const q = search.trim().toLowerCase();
+                const userAllowedTargetsArr = Array.from(
+                  new Set([
+                    ...(getAllowedBebansForUser(sessionUser?.beban) || []),
+                    ...(parseBebans(sessionUser?.beban) || []),
+                  ])
+                ).map((b) => String(b).trim().toLowerCase());
+                const userAllowedTargetsSet = new Set(userAllowedTargetsArr);
+                const sessionUserBebansSet = new Set(
+                  parseBebans(sessionUser?.beban).map((b) =>
+                    String(b).trim().toLowerCase()
+                  )
+                );
+                const normalizedFilterBeban =
+                  filterBeban === "All" || !filterBeban
+                    ? null
+                    : String(filterBeban).trim().toLowerCase();
+
                 const filtered = assets.filter((a) => {
-                  const matchBeban =
-                    filterBeban === "All" || a.beban === filterBeban;
+                  const ab = String(a?.beban ?? "")
+                    .trim()
+                    .toLowerCase();
+                  let matchBeban = false;
+                  if (filterBeban === "All") {
+                    if (sessionUser?.role !== "admin") {
+                      // non-admin users see all assets in their allowed set or matching one of their beban values
+                      matchBeban =
+                        sessionUserBebansSet.size > 0
+                          ? sessionUserBebansSet.has(ab) ||
+                            userAllowedTargetsSet.has(ab)
+                          : userAllowedTargetsSet.has(ab);
+                    } else {
+                      matchBeban = true; // admin sees everything by default
+                    }
+                  } else {
+                    // specific beban selected: only show assets that match the selected beban
+                    matchBeban = ab === normalizedFilterBeban;
+                  }
                   const matchGroup =
                     filterGroup === "All" || a.grup === filterGroup;
                   const tgl = a.tglPembelian
@@ -350,7 +508,7 @@ export default function User({ user, sessionUser, onLogout }) {
                     assets={filtered}
                     showActions={false}
                     loading={loading}
-                    title={`Daftar Aset (Beban: ${
+                    title={`Daftar Aset (Departemen: ${
                       sessionUser?.beban ?? "All"
                     })`}
                     ref={tableRef}
@@ -364,6 +522,7 @@ export default function User({ user, sessionUser, onLogout }) {
                       </button>
                     }
                     onView={(a) => setDetailAsset(a)}
+                    useMaster={false}
                   />
                 );
               })()}
@@ -371,15 +530,11 @@ export default function User({ user, sessionUser, onLogout }) {
                 <AssetDetail
                   asset={detailAsset}
                   onClose={() => setDetailAsset(null)}
-                  onEdit={(a) => {
-                    setDetailAsset(null);
-                    // For user role we do not have inline edit; if user has edit, call startEdit if available
-                  }}
-                  onDelete={(id) => {
-                    setDetailAsset(null);
-                    // no delete for user page; ignore
-                  }}
-                  onUpdated={(updated) => {
+                  userRole="user"
+                  groups={GROUPS}
+                  bebans={BEBANS}
+                  akun={AKUN}
+                  onUpdated={(updated, type) => {
                     if (!updated) return;
                     setAssets((prev) =>
                       prev.map((p) =>
@@ -393,12 +548,31 @@ export default function User({ user, sessionUser, onLogout }) {
                       ...(prev || {}),
                       ...(updated || {}),
                     }));
+                    setAlert({
+                      type: "success",
+                      message:
+                        type === "image"
+                          ? "Gambar berhasil diperbarui."
+                          : "Data aset berhasil diperbarui.",
+                    });
                   }}
                 />
               )}
             </div>
           </section>
         </main>
+
+        <Confirm
+          open={confirmCreate}
+          title="Konfirmasi Buat Aset"
+          message={`Apakah Anda yakin ingin membuat aset baru dengan ID "${
+            form.asetId || suggestedAsetId
+          }"?`}
+          confirmLabel="Ya, Buat"
+          cancelLabel="Batal"
+          onConfirm={handleCreate}
+          onClose={() => setConfirmCreate(false)}
+        />
       </div>
     </>
   );

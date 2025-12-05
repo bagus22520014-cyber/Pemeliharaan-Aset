@@ -1,8 +1,8 @@
 import "./App.css";
 import { useEffect, useState } from "react";
-import Login from "./pages/Login";
-import Admin from "./pages/Admin";
-import User from "./pages/User";
+import Login from "@/pages/Login";
+import Admin from "@/pages/Admin";
+import User from "@/pages/User";
 
 function App() {
   const [user, setUser] = useState(() => {

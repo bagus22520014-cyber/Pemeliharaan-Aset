@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Confirm from "./Confirm";
-import { listPerbaikan, createPerbaikan, deletePerbaikan } from "../api/aset";
-import { formatRupiah } from "../utils/format";
+import { listPerbaikan, createPerbaikan, deletePerbaikan } from "@/api/aset";
+import { formatRupiah } from "@/utils/format";
 
 export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
   const [repairs, setRepairs] = useState([]);

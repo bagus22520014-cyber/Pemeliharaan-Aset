@@ -22,6 +22,9 @@ function normalizeAset(record) {
   if (r.Keterangan && !r.keterangan) r.keterangan = r.Keterangan;
   if (r.Gambar && !r.gambar) r.gambar = r.Gambar;
   if (r.MasaManfaat && !r.masaManfaat) r.masaManfaat = r.MasaManfaat;
+  if (r.Pengguna && !r.pengguna) r.pengguna = r.Pengguna;
+  if (r.Lokasi && !r.lokasi) r.lokasi = r.Lokasi;
+  if (r.Tempat && !r.tempat) r.tempat = r.Tempat;
   if (r.ID && !r.id) r.id = r.ID;
   if (r.Id && !r.id) r.id = r.Id;
   // Support AsetId as a possible primary key returned by some backends
@@ -33,16 +36,10 @@ function normalizeAset(record) {
     typeof r.tglPembelian === "string" &&
     r.tglPembelian.includes("T")
   ) {
-    try {
-      const d = new Date(r.tglPembelian);
-      if (!Number.isNaN(d.getTime())) {
-        const pad = (n) => String(n).padStart(2, "0");
-        r.tglPembelian = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
-          d.getDate()
-        )}`;
-      }
-    } catch {
-      // leave as-is if parsing fails
+    // Extract date portion directly from ISO string (e.g., "2025-12-11T17:00:00.000Z" -> "2025-12-11")
+    const datePart = r.tglPembelian.split("T")[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+      r.tglPembelian = datePart;
     }
   }
   return r;
@@ -58,6 +55,8 @@ function getAuthHeaders() {
     // Some backends in dev expect an explicit 'x-role' header for role-based testing
     // (e.g. x-role: admin). Attach it if present in the session user.
     if (user?.role) headers["x-role"] = String(user.role);
+    // Add x-username header for backend logging/audit trail
+    if (user?.username) headers["x-username"] = String(user.username);
     // Add x-beban to support backend filtering by user 'beban' for non-admin users
     if (user?.beban) headers["x-beban"] = String(user.beban);
     return headers;
@@ -104,6 +103,9 @@ function toServerAset(payload) {
     status: "StatusAset",
     keterangan: "Keterangan",
     masaManfaat: "MasaManfaat",
+    pengguna: "Pengguna",
+    lokasi: "Lokasi",
+    tempat: "Tempat",
     id: "ID",
   };
   for (const [k, v] of Object.entries(payload)) {
@@ -174,8 +176,12 @@ async function handleResponse(res) {
   return res.text();
 }
 
-export async function listAset() {
+export async function listAset(opts = { includeBebanHeader: true }) {
   const headers = getAuthHeaders();
+  if (opts && opts.includeBebanHeader === false) {
+    // Remove x-beban to allow fetching all assets regardless of the session user's beban.
+    if (headers && headers["x-beban"]) delete headers["x-beban"];
+  }
   const headersForLog = { ...headers };
   if (headersForLog.Authorization) delete headersForLog.Authorization;
   // debug logging removed for production
@@ -186,6 +192,21 @@ export async function listAset() {
   const data = await handleResponse(res);
   if (Array.isArray(data)) return data.map(normalizeAset);
   if (Array.isArray(data?.items)) return data.items.map(normalizeAset);
+  return normalizeAset(data);
+}
+
+export async function getAset(id, opts = { includeBebanHeader: true }) {
+  if (!id) return null;
+  const encoded = encodeURIComponent(String(id));
+  const headers = getAuthHeaders();
+  if (opts && opts.includeBebanHeader === false) {
+    if (headers && headers["x-beban"]) delete headers["x-beban"];
+  }
+  const res = await fetch(`${BASE}/${encoded}`, {
+    credentials: "include",
+    headers,
+  });
+  const data = await handleResponse(res);
   return normalizeAset(data);
 }
 
@@ -256,11 +277,14 @@ export async function deleteAset(id) {
 export async function uploadAsetImage(id, file) {
   if (!id) throw new Error("No id provided");
   if (!file) throw new Error("No file provided");
+
   const encoded = encodeURIComponent(String(id));
   const form = new FormData();
   // Use 'Gambar' field name to match the backend example
   form.append("Gambar", file);
+
   const headers = getAuthHeaders();
+
   // When sending FormData, do not set Content-Type header (browser will set it)
   const res = await fetch(`${BASE}/${encoded}/gambar`, {
     method: "PUT",
@@ -268,7 +292,9 @@ export async function uploadAsetImage(id, file) {
     headers,
     body: form,
   });
+
   const data = await handleResponse(res);
+
   const normalized = normalizeAset(data) || {};
   // If server didn't include id/asetId in response, fill it from the provided id
   if (!normalized.id && !normalized.asetId) {
@@ -349,10 +375,56 @@ export async function deletePerbaikan(id) {
   return handleResponse(res);
 }
 
+// Riwayat (history) api helpers
+function normalizeRiwayat(record) {
+  if (!record || typeof record !== "object") return record;
+  const r = { ...record };
+  if (r.ID && !r.id) r.id = r.ID;
+  if (r.Id && !r.id) r.id = r.Id;
+  if (r.jenis_aksi && !r.jenisAksi) r.jenisAksi = r.jenis_aksi;
+  if (r.user_id && !r.userId) r.userId = r.user_id;
+  if (r.aset_id && !r.asetId) r.asetId = r.aset_id;
+  if (r.AsetId && !r.asetIdString) r.asetIdString = r.AsetId;
+  if (r.NamaAset && !r.namaAset) r.namaAset = r.NamaAset;
+  if (r.tabel_ref && !r.tabelRef) r.tabelRef = r.tabel_ref;
+  if (r.record_id && !r.recordId) r.recordId = r.record_id;
+  // Normalize waktu to ISO string or date-only if needed
+  if (r.waktu && typeof r.waktu === "string" && r.waktu.includes("T")) {
+    try {
+      const d = new Date(r.waktu);
+      if (!Number.isNaN(d.getTime())) {
+        r.waktu = d.toISOString();
+      }
+    } catch (err) {}
+  }
+  return r;
+}
+
+export async function listRiwayat(asetId) {
+  if (!asetId) return [];
+
+  // Remove x-beban header to allow users to access history of their own assets
+  const headers = getAuthHeaders();
+  if (headers["x-beban"]) {
+    delete headers["x-beban"];
+  }
+
+  const res = await fetch(`/riwayat?aset_id=${encodeURIComponent(asetId)}`, {
+    credentials: "include",
+    headers,
+  });
+  const data = await handleResponse(res);
+  if (Array.isArray(data)) return data.map(normalizeRiwayat);
+  if (Array.isArray(data?.items)) return data.items.map(normalizeRiwayat);
+  return [normalizeRiwayat(data)];
+}
+
 export default {
   listAset,
+  getAset,
   createAset,
   updateAset,
   deleteAset,
   uploadAsetImage,
+  listRiwayat,
 };

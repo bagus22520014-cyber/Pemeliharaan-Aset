@@ -1,71 +1,24 @@
 import { useEffect, useState, useRef, useMemo } from "react";
-import CreateAsset from "../components/CreateAsset";
-import SearchFilterBar from "../components/SearchFilterBar";
-import AssetTable from "../components/AssetTable";
-import Alert from "../components/Alert";
-import Confirm from "../components/Confirm";
-import AssetDetail from "../components/AssetDetail";
+import CreateAsset from "@/components/tabelAset/addAset/CreateAsset";
+import SearchFilterBar from "@/components/tabelAset/filter/SearchFilterBar";
+import AssetTable from "@/components/tabelAset/tabel/AssetTable";
+import Alert from "@/components/Alert";
+import Confirm from "@/components/Confirm";
+import AssetDetail from "@/components/tabelAset/tabel/detail/AssetDetail";
 // formatRupiah used in `AssetTable` component; no longer needed here
-import Forbidden from "../components/Forbidden";
-import { listAset, createAset, updateAset, deleteAset } from "../api/aset";
+import Forbidden from "@/components/Forbidden";
+import { createAset, listAset } from "@/api/aset";
 import { FaPlus } from "react-icons/fa";
-import Navbar from "../components/Navbar";
-import { generateAsetId } from "../utils/format";
-
-const GROUPS = [
-  "BANGUNAN",
-  "DISTRIBUSI JARINGAN",
-  "HEADEND",
-  "KENDARAAN",
-  "KOMPUTER",
-  "PERALATAN & INVENTARIS KANTOR",
-  "TANAH",
-];
-const BEBANS = [
-  "HO",
-  "BJR-NET",
-  "BNT-NET",
-  "BTM-NET",
-  "GTO-NET",
-  "KDR-NET",
-  "LMP-NET",
-  "MLG-NET",
-  "PDG-NET",
-  "PKB-NET",
-  "PKP-NET",
-  "PLB-NET",
-  "SBY-NET",
-  "SMD-NET",
-  "SRG-NET",
-  "MLMKOB",
-  "MLMMET",
-  "MLMSDKB",
-  "MLMSL",
-  "BJR-MEDIA",
-  "BNT-MEDIA",
-  "BTM-MEDIA",
-  "GTO-MEDIA",
-  "KDR-MEDIA",
-  "LMP-MEDIA",
-  "MLG-MEDIA",
-  "PDG-MEDIA",
-  "PKB-MEDIA",
-  "PKP-MEDIA",
-  "PLB-MEDIA",
-  "SBY-MEDIA",
-  "SMD-MEDIA",
-  "SRG-MEDIA",
-];
-const AKUN = [
-  "1701-01 (Tanah)",
-  "1701-02 (Bangunan)",
-  "1701-03 (Kendaraan)",
-  "1701-04 (Distribusi Jaringan / Headend)",
-  "1701-05 (Peralatan & Inventaris Kantor)",
-  "1701-06 (Renovasi & Instalasi Listrik)",
-  "1701-07 (Perlengkapan & Inventaris IT)",
-];
-const STATUSES = ["aktif", "rusak", "diperbaiki", "dipinjam", "dijual"];
+import Navbar from "@/components/Navbar";
+import UserListModal from "@/components/UserListModal";
+import {
+  generateAsetId,
+  getCurrentDate,
+  GROUPS,
+  BEBANS,
+  AKUN,
+  STATUSES,
+} from "@/utils/format";
 
 export default function Admin({ user, onLogout, sessionUser }) {
   const [showCreate, setShowCreate] = useState(false);
@@ -79,33 +32,33 @@ export default function Admin({ user, onLogout, sessionUser }) {
   const [filterStatus, setFilterStatus] = useState("All");
 
   const [search, setSearch] = useState("");
-  const [editing, setEditing] = useState(null);
+  // Inline editing removed — only create is supported
   const tableRef = useRef(null);
-  const [selectedIds, setSelectedIds] = useState([]);
+  // selection for delete removed: no batch delete
   const [detailAsset, setDetailAsset] = useState(null);
   // Scan control is now handled by SearchFilterBar
-  const [confirmModal, setConfirmModal] = useState({
-    open: false,
-    ids: [],
-    title: null,
-    message: null,
-    danger: false,
-  });
+  // Confirm modal for delete removed
   const [form, setForm] = useState({
     asetId: "",
     accurateId: "",
     namaAset: "",
     spesifikasi: "",
-    grup: GROUPS[0],
-    beban: BEBANS[0],
-    akunPerkiraan: AKUN[0],
+    grup: "",
+    beban: "",
+    akunPerkiraan: "",
     nilaiAset: "",
-    tglPembelian: "",
+    tglPembelian: getCurrentDate(),
     masaManfaat: "",
     statusAset: "aktif",
     keterangan: "",
+    pengguna: "",
+    lokasi: "",
+    tempat: "",
   });
   const [logoutConfirm, setLogoutConfirm] = useState(false);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [confirmCreate, setConfirmCreate] = useState(false);
+  const [pendingFile, setPendingFile] = useState(null);
 
   const suggestedAsetId = useMemo(
     () => generateAsetId(assets, form.beban, form.tglPembelian),
@@ -113,28 +66,66 @@ export default function Admin({ user, onLogout, sessionUser }) {
   );
 
   useEffect(() => {
-    if (showCreate && !editing) {
-      setForm((f) => ({ ...f, asetId: suggestedAsetId }));
+    if (showCreate) {
+      (async () => {
+        try {
+          const data = await listAset({ includeBebanHeader: false });
+          const masterList = Array.isArray(data) ? data : data?.items ?? [];
+          const suggested = generateAsetId(
+            masterList,
+            form.beban,
+            form.tglPembelian
+          );
+          setForm((f) => ({ ...f, asetId: suggested }));
+        } catch (err) {
+          setForm((f) => ({ ...f, asetId: suggestedAsetId }));
+        }
+      })();
     }
-  }, [showCreate, editing, suggestedAsetId]);
+  }, [showCreate, suggestedAsetId]);
 
   // load assets & effect (must be declared before potential early returns so hooks are stable)
   const loadAssets = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await listAset();
+      const data = await listAset({ includeBebanHeader: false });
       const list = Array.isArray(data) ? data : data?.items ?? [];
       const hasRoleFilter = sessionUser?.role !== "admin" && sessionUser?.beban;
-      const normalizedUserBeban = hasRoleFilter
-        ? String(sessionUser.beban).trim().toLowerCase()
-        : null;
+      const parseBebans = (userBeban) => {
+        if (!userBeban) return [];
+        if (Array.isArray(userBeban))
+          return Array.from(
+            new Set(userBeban.map((b) => String(b).trim()).filter(Boolean))
+          );
+        let raw = String(userBeban || "").trim();
+        try {
+          const d = decodeURIComponent(raw);
+          if (d && typeof d === "string") raw = d;
+        } catch (err) {}
+        return Array.from(
+          new Set(
+            raw
+              .split(/[;,|]/)
+              .map((b) => String(b || "").trim())
+              .filter(Boolean)
+          )
+        );
+      };
+      const sessionUserBebansSet = new Set(
+        parseBebans(sessionUser?.beban).map((b) =>
+          String(b).trim().toLowerCase()
+        )
+      );
       const filteredList = hasRoleFilter
-        ? list.filter(
-            (a) =>
-              String(a?.beban ?? "")
-                .trim()
-                .toLowerCase() === normalizedUserBeban
+        ? list.filter((a) =>
+            sessionUserBebansSet.size > 0
+              ? sessionUserBebansSet.has(
+                  String(a?.beban ?? "")
+                    .trim()
+                    .toLowerCase()
+                )
+              : false
           )
         : list;
       setAssets(filteredList);
@@ -183,26 +174,97 @@ export default function Admin({ user, onLogout, sessionUser }) {
       accurateId: "",
       namaAset: "",
       spesifikasi: "",
-      grup: GROUPS[0],
-      beban: BEBANS[0],
-      akunPerkiraan: AKUN[0],
+      grup: "",
+      beban: "",
+      akunPerkiraan: "",
       nilaiAset: "",
-      tglPembelian: "",
+      tglPembelian: getCurrentDate(),
       masaManfaat: "",
       statusAset: "aktif",
       keterangan: "",
+      pengguna: "",
+      lokasi: "",
+      tempat: "",
     });
 
-  const handleCreate = async (e) => {
+  const handleCreateRequest = (e, file) => {
     e?.preventDefault();
+    setError(null);
+
+    // Validasi field wajib
+    const requiredFields = [
+      { field: "asetId", label: "Aset ID" },
+      { field: "namaAset", label: "Nama Aset" },
+      { field: "grup", label: "Kategori" },
+      { field: "akunPerkiraan", label: "Akun Perkiraan" },
+      { field: "beban", label: "Departemen" },
+      { field: "tglPembelian", label: "Tanggal Perolehan" },
+      { field: "nilaiAset", label: "Harga Perolehan" },
+    ];
+
+    const emptyFields = requiredFields.filter(
+      (rf) => !form[rf.field] || String(form[rf.field]).trim() === ""
+    );
+
+    if (emptyFields.length > 0) {
+      const fieldNames = emptyFields.map((f) => f.label).join(", ");
+      setError(`Field wajib diisi: ${fieldNames}`);
+      setAlert({ type: "error", message: `Field wajib diisi: ${fieldNames}` });
+      return;
+    }
+
+    // Show confirmation
+    setPendingFile(file);
+    setConfirmCreate(true);
+  };
+
+  const handleCreate = async () => {
+    setConfirmCreate(false);
     setLoading(true);
     setError(null);
+
     try {
       // Ensure AsetId is auto-generated if not provided
-      const finalPayload = { ...form, asetId: form.asetId || suggestedAsetId };
+      const finalPayload = {
+        ...form,
+        asetId: form.asetId || suggestedAsetId,
+        statusAset: "aktif",
+      };
       // also set the form state so the UI reflects it
       if (!form.asetId) setForm((f) => ({ ...f, asetId: suggestedAsetId }));
+
       const created = await createAset(finalPayload);
+
+      // Upload image if file is provided
+      if (pendingFile) {
+        const assetId = created?.asetId || created?.id || finalPayload.asetId;
+
+        if (!assetId) {
+          console.error("No asset ID found for image upload");
+          setAlert({
+            type: "warning",
+            message:
+              "Aset berhasil ditambahkan tetapi tidak dapat upload gambar (ID tidak ditemukan)",
+          });
+        } else {
+          const { uploadAsetImage } = await import("../api/aset");
+          try {
+            const uploadResult = await uploadAsetImage(assetId, pendingFile);
+            // Update the created asset with the image info if returned
+            if (uploadResult?.gambar) {
+              created.gambar = uploadResult.gambar;
+            }
+          } catch (uploadErr) {
+            console.error("Image upload failed:", uploadErr);
+            setAlert({
+              type: "warning",
+              message: `Aset berhasil ditambahkan tetapi upload gambar gagal: ${
+                uploadErr.message || uploadErr
+              }`,
+            });
+          }
+        }
+      }
       if (created && (created.id || created.asetId)) {
         setAssets((prev) => {
           const id = String(created.asetId ?? created.id);
@@ -220,6 +282,8 @@ export default function Admin({ user, onLogout, sessionUser }) {
         await loadAssets();
       }
       resetForm();
+      setShowCreate(false);
+      setPendingFile(null);
       setAlert({ type: "success", message: "Aset berhasil ditambahkan." });
     } catch (err) {
       const message = err?.message || String(err);
@@ -240,224 +304,16 @@ export default function Admin({ user, onLogout, sessionUser }) {
     }
   };
 
-  const startEdit = (asset) => {
-    // Use a shallow copy to avoid accidental mutations; pre-populate editing and form
-    setEditing({ ...asset });
-    const safeKeterangan =
-      asset?.keterangan ?? asset?.Keterangan ?? asset?.KET ?? asset?.ket ?? "";
-    setForm({
-      asetId: asset.asetId ?? "",
-      accurateId: asset.accurateId ?? "",
-      namaAset: asset.namaAset ?? "",
-      spesifikasi: asset.spesifikasi ?? "",
-      grup: asset.grup ?? GROUPS[0],
-      beban: asset.beban ?? BEBANS[0],
-      akunPerkiraan: asset.akunPerkiraan ?? AKUN[0],
-      nilaiAset: asset.nilaiAset ?? "",
-      tglPembelian: asset.tglPembelian ?? "",
-      masaManfaat: asset.masaManfaat ?? "",
-      statusAset: asset.statusAset ?? "aktif",
-      keterangan: safeKeterangan,
-    });
-    setShowCreate(true);
-  };
+  // Editing removed; admin can only create assets now
 
   // Compare form with the current `editing` asset to detect whether a change occurred.
-  const isFormChanged = (() => {
-    if (!editing) return true; // not in edit mode => allow create
-    const keys = [
-      "asetId",
-      "accurateId",
-      "namaAset",
-      "spesifikasi",
-      "grup",
-      "beban",
-      "akunPerkiraan",
-      "nilaiAset",
-      "tglPembelian",
-      "masaManfaat",
-      "statusAset",
-      "keterangan",
-    ];
-    for (const k of keys) {
-      const a = form?.[k] ?? "";
-      const b = editing?.[k] ?? "";
-      if (String(a) !== String(b)) return true;
-    }
-    return false;
-  })();
+  // no edit comparisons required for create-only flow
 
-  const handleUpdate = async (e) => {
-    e?.preventDefault();
-    if (!editing) return;
-    setLoading(true);
-    setError(null);
-    try {
-      // Prefer using asetId (the human-friendly id which may contain slashes)
-      // when available, otherwise fall back to numeric DB id.
-      const idToSend = editing.asetId ?? editing.id;
-      // merge existing asset with the form so we don't overwrite fields with empty strings
-      const payloadToSend = { ...(editing || {}), ...(form || {}) };
-      try {
-        // eslint-disable-next-line no-console
-        console.debug(
-          "handleUpdate -> idToSend:",
-          idToSend,
-          "editing.statusAset:",
-          editing?.statusAset,
-          "payload.statusAset:",
-          payloadToSend?.statusAset,
-          "payload (raw):",
-          payloadToSend
-        );
-      } catch {}
-      const updated = await updateAset(idToSend, payloadToSend);
-      if (!updated) {
-        // Server returned no content — we still need to reload assets, but warn the user
-        setError(
-          "Update succeeded but server returned no updated data (204). Refreshing list."
-        );
-      }
-      try {
-        // after update, fetch current version from server and log
-        const refreshed = await listAset();
-        // find asset by asetId or id
-        const found = Array.isArray(refreshed)
-          ? refreshed.find((a) => String(a.asetId ?? a.id) === String(idToSend))
-          : null;
-        // eslint-disable-next-line no-console
-        console.debug("handleUpdate -> after server refresh found:", found);
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.debug("handleUpdate -> after refresh error:", String(err));
-      }
-      // Keep the create/edit form populated after update: keep `editing` set to the
-      // updated record and set the form fields to server's returned asset (if any).
-      // This prevents the UI from clearing the form and allows the user to continue
-      // editing further if needed.
-      if (updated && (updated.id || updated.asetId)) {
-        setEditing(typeof updated === "object" ? { ...updated } : editing);
-        setForm((f) => ({ ...f, ...(updated || {}) }));
-      }
-      if (updated && (updated.id || updated.asetId)) {
-        setAlert({ type: "success", message: "Aset berhasil diperbarui." });
-        setAssets((prev) =>
-          prev.map((p) =>
-            String(p.asetId ?? p.id) === String(updated.asetId ?? updated.id)
-              ? updated
-              : p
-          )
-        );
-        tableRef.current?.goToAsset?.(updated.asetId ?? updated.id, {
-          highlight: "text",
-        });
-      } else {
-        await loadAssets();
-      }
-    } catch (err) {
-      const message = err?.message || String(err);
-      setError(
-        err?.status === 401 || err?.status === 403
-          ? `${message} (unauthorized — please login or ensure backend is running)`
-          : message
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Update handler removed; editing is disabled
 
-  const handleDelete = async (id) => {
-    // Show confirm modal for deleting a single asset
-    setConfirmModal({
-      open: true,
-      ids: [id],
-      title: "Hapus Aset",
-      message: "Yakin ingin menghapus aset ini?",
-      danger: true,
-    });
-    setLoading(true);
-    setError(null);
-    try {
-      // Note: delete execution will be performed when user confirms in the Confirm modal
-      // Keep the call quick; actual network call handled in performConfirmedDelete
-      // No-op here
-      // If this id was selected, remove it from selection
-      setSelectedIds((prev) =>
-        Array.isArray(prev) ? prev.filter((s) => String(s) !== String(id)) : []
-      );
-    } catch (err) {
-      const message = err?.message || String(err);
-      setError(
-        err?.status === 401 || err?.status === 403
-          ? `${message} (unauthorized — please login or ensure backend is running)`
-          : message
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Delete action removed from UI
 
-  const performConfirmedDelete = async (ids = []) => {
-    if (!ids || ids.length === 0)
-      return setConfirmModal({
-        open: false,
-        ids: [],
-        title: null,
-        message: null,
-        danger: false,
-      });
-    setLoading(true);
-    setError(null);
-    try {
-      const results = await Promise.allSettled(ids.map((id) => deleteAset(id)));
-      const failed = results.filter((r) => r.status === "rejected");
-      const successCount = results.filter(
-        (r) => r.status === "fulfilled"
-      ).length;
-      if (failed.length) {
-        const msgs = failed
-          .map((f) => f.reason?.message || String(f.reason))
-          .join("; ");
-        setError(`Some deletes failed: ${msgs}`);
-        setAlert({
-          type: "error",
-          message: `Beberapa penghapusan gagal: ${failed.length}`,
-        });
-      }
-      if (successCount > 0) {
-        // Remove deleted ids from local assets state
-        const deletedIds = ids.map((i) => String(i));
-        setAssets((prev) =>
-          prev.filter((p) => !deletedIds.includes(String(p.asetId ?? p.id)))
-        );
-        setAlert({
-          type: "success",
-          message: `${successCount} aset berhasil dihapus.`,
-        });
-        // Clear from selectedIds in parent state and the table's internal state
-        setSelectedIds((prev) =>
-          Array.isArray(prev)
-            ? prev.filter((s) => !deletedIds.includes(String(s)))
-            : []
-        );
-        try {
-          tableRef.current?.clearSelection?.();
-        } catch {}
-      }
-    } catch (err) {
-      setError(String(err));
-      setAlert({ type: "error", message: String(err) });
-    } finally {
-      setLoading(false);
-      setConfirmModal({
-        open: false,
-        ids: [],
-        title: null,
-        message: null,
-        danger: false,
-      });
-    }
-  };
+  // Batch delete removed
 
   return (
     <>
@@ -465,9 +321,18 @@ export default function Admin({ user, onLogout, sessionUser }) {
         title="Admin dashboard"
         user={user}
         onLogout={() => setLogoutConfirm(true)}
-        leftControls={<div></div>}
+        leftControls={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowUserModal(true)}
+              className="px-3 py-1 rounded-md border bg-white text-sm hover:bg-gray-50"
+            >
+              Daftar User
+            </button>
+          </div>
+        }
       />
-      <div className="min-h-screen bg-white p-6 pt-0">
+      <div className="bg-white p-6 pt-0">
         {alert && (
           <div className="mb-4">
             <Alert
@@ -490,73 +355,23 @@ export default function Admin({ user, onLogout, sessionUser }) {
             }}
           />
         )}
-        {confirmModal.open && (
-          <Confirm
-            open={confirmModal.open}
-            title={confirmModal.title}
-            message={confirmModal.message}
-            danger={confirmModal.danger}
-            onClose={() =>
-              setConfirmModal({
-                open: false,
-                ids: [],
-                title: null,
-                message: null,
-                danger: false,
-              })
-            }
-            onConfirm={() => performConfirmedDelete(confirmModal.ids)}
-            confirmLabel={
-              confirmModal.ids && confirmModal.ids.length > 1
-                ? "Hapus"
-                : "Hapus"
-            }
-          />
-        )}
+        {/* Delete confirm modal removed (edit/delete disabled) */}
 
         <main>
           {/* Welcome message removed — header / navbar now displays username */}
 
-          <section
-            className={`mt-6 grid grid-cols-1 ${
-              showCreate ? "md:grid-cols-4" : "md:grid-cols-1"
-            } gap-6`}
-          >
+          <section className="mt-6 relative">
             {showCreate && (
-              <div className="md:col-span-1 bg-gray-50 p-2 rounded shadow">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-base font-semibold">
-                    {editing ? "Edit Asset" : "Create Asset"}
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    {editing && (
-                      <button
-                        onClick={() => {
-                          setEditing(null);
-                          resetForm();
-                        }}
-                        className="px-3 py-1.5 rounded border border-gray-300 text-sm bg-white"
-                      >
-                        New
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setShowCreate(false)}
-                      className="px-3 py-1.5 rounded border border-gray-300 text-sm bg-white"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
+              <div className="mb-6">
                 <CreateAsset
                   form={form}
                   setForm={setForm}
-                  onSubmit={editing ? handleUpdate : handleCreate}
+                  onSubmit={handleCreateRequest}
                   onCancel={() => {
-                    setEditing(null);
                     resetForm();
+                    setShowCreate(false);
                   }}
-                  isEditing={!!editing}
+                  isEditing={false}
                   loading={loading}
                   error={error}
                   groups={GROUPS}
@@ -564,18 +379,14 @@ export default function Admin({ user, onLogout, sessionUser }) {
                   akun={AKUN}
                   disabledBeban={false}
                   hideHeader={true}
-                  autoAsetId={suggestedAsetId}
                   readOnlyAsetId={false}
-                  submitDisabled={editing ? !isFormChanged : false}
+                  submitDisabled={false}
+                  useMaster={true}
                 />
               </div>
             )}
 
-            <div
-              className={`transition-all ${
-                showCreate ? "md:col-span-3" : "md:col-span-1 md:w-full"
-              }`}
-            >
+            <div>
               <SearchFilterBar
                 filterBeban={filterBeban}
                 onFilterChange={(v) => setFilterBeban(v)}
@@ -606,6 +417,7 @@ export default function Admin({ user, onLogout, sessionUser }) {
                   });
                   setDetailAsset(found);
                 }}
+                useMaster={true}
               />
               {/* Group and search filter */}
               {(() => {
@@ -642,18 +454,7 @@ export default function Admin({ user, onLogout, sessionUser }) {
                 return (
                   <AssetTable
                     assets={filtered}
-                    onEdit={startEdit}
                     onView={(a) => setDetailAsset(a)}
-                    onDelete={handleDelete}
-                    onDeleteSelected={(ids) =>
-                      setConfirmModal({
-                        open: true,
-                        ids,
-                        title: "Hapus Aset Terpilih",
-                        message: `Yakin ingin menghapus ${ids.length} aset terpilih?`,
-                        danger: true,
-                      })
-                    }
                     loading={loading}
                     title={`Daftar Aset (Admin)`}
                     leftControls={
@@ -666,26 +467,26 @@ export default function Admin({ user, onLogout, sessionUser }) {
                     }
                     ref={tableRef}
                     resetOnAssetsChange={false}
-                    selectable={true}
-                    onSelectionChange={(ids) => setSelectedIds(ids)}
+                    useMaster={false}
                   />
                 );
               })()}
+              <UserListModal
+                open={showUserModal}
+                onClose={() => setShowUserModal(false)}
+                bebans={BEBANS}
+              />
             </div>
             {detailAsset && (
               <AssetDetail
                 asset={detailAsset}
                 onClose={() => setDetailAsset(null)}
-                onEdit={(a) => {
-                  setDetailAsset(null);
-                  startEdit(a);
-                }}
-                onDelete={(id) => {
-                  setDetailAsset(null);
-                  handleDelete(id);
-                }}
-                onUpdated={(updated) => {
-                  // update local ed table with new asset returned after image upload
+                userRole="admin"
+                groups={GROUPS}
+                bebans={BEBANS}
+                akun={AKUN}
+                onUpdated={(updated, type) => {
+                  // update local ed table with new asset returned after image upload or data update
                   if (!updated) return;
                   setAssets((prev) =>
                     prev.map((p) =>
@@ -702,13 +503,28 @@ export default function Admin({ user, onLogout, sessionUser }) {
                   }));
                   setAlert({
                     type: "success",
-                    message: "Gambar berhasil diperbarui.",
+                    message:
+                      type === "image"
+                        ? "Gambar berhasil diperbarui."
+                        : "Data aset berhasil diperbarui.",
                   });
                 }}
               />
             )}
           </section>
         </main>
+
+        <Confirm
+          open={confirmCreate}
+          title="Konfirmasi Buat Aset"
+          message={`Apakah Anda yakin ingin membuat aset baru dengan ID "${
+            form.asetId || suggestedAsetId
+          }"?`}
+          confirmLabel="Ya, Buat"
+          cancelLabel="Batal"
+          onConfirm={handleCreate}
+          onClose={() => setConfirmCreate(false)}
+        />
       </div>
     </>
   );
