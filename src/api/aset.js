@@ -454,6 +454,7 @@ export async function createRusak(asetId, payload) {
   const body = JSON.stringify({
     AsetId: asetId,
     TglRusak: payload.tanggal,
+    lokasi_id: payload.lokasi_id,
     Kerusakan: payload.keterangan,
     jumlah_rusak: payload.jumlahRusak || 1,
     StatusRusak: payload.statusRusak || "temporary",
@@ -542,6 +543,7 @@ export async function createDipinjam(asetId, payload) {
   const headers = { "Content-Type": "application/json", ...getAuthHeaders() };
   const body = JSON.stringify({
     AsetId: asetId,
+    lokasi_id: payload.lokasi_id,
     tanggal_pinjam: payload.tanggalPinjam,
     tanggal_kembali: payload.tanggalKembali,
     peminjam: payload.peminjam,
@@ -620,6 +622,7 @@ export async function createDijual(asetId, payload) {
   const headers = { "Content-Type": "application/json", ...getAuthHeaders() };
   const body = JSON.stringify({
     AsetId: asetId,
+    lokasi_id: payload.lokasi_id,
     tanggal_jual: payload.tanggalJual,
     pembeli: payload.pembeli,
     harga_jual: payload.hargaJual,
