@@ -30,11 +30,13 @@ export default function LocationSelector({
       setError(null);
       try {
         const data = await getAsetLokasiByAsetId(asetId);
+        console.log('[LocationSelector] Raw API response:', data);
         if (mounted) {
           // Filter locations with available stock
           const available = (data.locations || []).filter(
             (loc) => loc.jumlah > 0
           );
+          console.log('[LocationSelector] Available locations:', available);
           setLocations(available);
 
           // Auto-select if only one location available

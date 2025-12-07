@@ -1,6 +1,6 @@
 const BASE = "/aset-lokasi";
 
-function getAuthHeaders() {
+function getAuthHeaders(includeBebanHeader = true) {
   try {
     const raw = localStorage.getItem("user");
     if (!raw) return {};
@@ -9,7 +9,7 @@ function getAuthHeaders() {
     if (user?.token) headers.Authorization = `Bearer ${user.token}`;
     if (user?.role) headers["x-role"] = String(user.role);
     if (user?.username) headers["x-username"] = String(user.username);
-    if (user?.beban) headers["x-beban"] = String(user.beban);
+    if (includeBebanHeader && user?.beban) headers["x-beban"] = String(user.beban);
     return headers;
   } catch (err) {
     return {};
@@ -35,9 +35,11 @@ export async function listAsetLokasi() {
 /**
  * Get aset lokasi by aset ID
  * Returns detailed location distribution with total_allocated and available count
+ * @param {string} asetId - The asset ID
+ * @param {boolean} includeBebanHeader - Whether to include x-beban header (default: false for all locations)
  */
-export async function getAsetLokasiByAsetId(asetId) {
-  const headers = getAuthHeaders();
+export async function getAsetLokasiByAsetId(asetId, includeBebanHeader = false) {
+  const headers = getAuthHeaders(includeBebanHeader);
   const encodedId = encodeURIComponent(asetId);
   const res = await fetch(`${BASE}/aset/${encodedId}`, {
     headers,

@@ -74,7 +74,7 @@ function normalizeAset(record) {
   return r;
 }
 
-function getAuthHeaders() {
+function getAuthHeaders(includeBebanHeader = true) {
   try {
     const raw = localStorage.getItem("user");
     if (!raw) return {};
@@ -87,7 +87,7 @@ function getAuthHeaders() {
     // Add x-username header for backend logging/audit trail
     if (user?.username) headers["x-username"] = String(user.username);
     // Add x-beban to support backend filtering by user 'beban' for non-admin users
-    if (user?.beban) headers["x-beban"] = String(user.beban);
+    if (includeBebanHeader && user?.beban) headers["x-beban"] = String(user.beban);
     return headers;
   } catch (err) {
     // failed to parse localStorage: ignore and return no headers
@@ -441,7 +441,7 @@ export async function listRusak(asetId) {
   const encoded = encodeURIComponent(String(asetId));
   const res = await fetch(`/rusak/aset/${encoded}`, {
     credentials: "include",
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(false),
   });
   const data = await handleResponse(res);
   if (Array.isArray(data)) return data.map(normalizeRusak);
@@ -450,7 +450,7 @@ export async function listRusak(asetId) {
 }
 
 export async function createRusak(asetId, payload) {
-  const headers = { "Content-Type": "application/json", ...getAuthHeaders() };
+  const headers = { "Content-Type": "application/json", ...getAuthHeaders(false) };
   const body = JSON.stringify({
     AsetId: asetId,
     TglRusak: payload.tanggal,
@@ -531,7 +531,7 @@ export async function listDipinjam(asetId) {
   const encoded = encodeURIComponent(String(asetId));
   const res = await fetch(`/dipinjam/aset/${encoded}`, {
     credentials: "include",
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(false),
   });
   const data = await handleResponse(res);
   if (Array.isArray(data)) return data.map(normalizeDipinjam);
@@ -540,7 +540,7 @@ export async function listDipinjam(asetId) {
 }
 
 export async function createDipinjam(asetId, payload) {
-  const headers = { "Content-Type": "application/json", ...getAuthHeaders() };
+  const headers = { "Content-Type": "application/json", ...getAuthHeaders(false) };
   const body = JSON.stringify({
     AsetId: asetId,
     lokasi_id: payload.lokasi_id,
@@ -610,7 +610,7 @@ export async function listDijual(asetId) {
   const encoded = encodeURIComponent(String(asetId));
   const res = await fetch(`/dijual/aset/${encoded}`, {
     credentials: "include",
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(false),
   });
   const data = await handleResponse(res);
   if (Array.isArray(data)) return data.map(normalizeDijual);
@@ -619,7 +619,7 @@ export async function listDijual(asetId) {
 }
 
 export async function createDijual(asetId, payload) {
-  const headers = { "Content-Type": "application/json", ...getAuthHeaders() };
+  const headers = { "Content-Type": "application/json", ...getAuthHeaders(false) };
   const body = JSON.stringify({
     AsetId: asetId,
     lokasi_id: payload.lokasi_id,
