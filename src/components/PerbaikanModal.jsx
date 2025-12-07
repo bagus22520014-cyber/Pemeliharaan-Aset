@@ -2,16 +2,20 @@ import React, { useEffect, useState } from "react";
 import Confirm from "./Confirm";
 import { listPerbaikan, createPerbaikan, deletePerbaikan } from "@/api/aset";
 import { formatRupiah } from "@/utils/format";
+import LocationSelector from "./LocationSelector";
 
 export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
   const [repairs, setRepairs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     tanggal: "",
+    lokasi_id: null,
     purchaseOrder: "",
     vendor: "",
     bagian: "",
     nominal: "",
+    deskripsi: "",
+    teknisi: "",
   });
   const [confirm, setConfirm] = useState({ open: false, id: null });
   const [error, setError] = useState(null);
@@ -32,16 +36,25 @@ export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
   }, [open, asetId]);
 
   async function handleCreate() {
+    if (!form.lokasi_id) {
+      setError("Lokasi harus dipilih");
+      return;
+    }
+
     try {
       setLoading(true);
+      setError(null);
       const created = await createPerbaikan(asetId, form);
       setRepairs((prev) => [...(prev || []), created]);
       setForm({
         tanggal: "",
+        lokasi_id: null,
         purchaseOrder: "",
         vendor: "",
         bagian: "",
         nominal: "",
+        deskripsi: "",
+        teknisi: "",
       });
       onChange?.(created);
     } catch (err) {
@@ -134,54 +147,97 @@ export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
         </div>
 
         <div className="border-t pt-3 mt-3">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <input
-              value={form.tanggal}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, tanggal: e.target.value }))
-              }
-              type="date"
-              className="p-2 border rounded"
-            />
-            <input
-              placeholder="PO"
-              value={form.purchaseOrder}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, purchaseOrder: e.target.value }))
-              }
-              className="p-2 border rounded"
-            />
-            <input
-              placeholder="Vendor"
-              value={form.vendor}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, vendor: e.target.value }))
-              }
-              className="p-2 border rounded"
-            />
-            <input
-              placeholder="Bagian"
-              value={form.bagian}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, bagian: e.target.value }))
-              }
-              className="p-2 border rounded"
-            />
-            <input
-              placeholder="Nominal"
-              value={form.nominal}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, nominal: e.target.value }))
-              }
-              className="p-2 border rounded"
-              type="number"
-            />
-            <div className="flex items-center gap-2">
+          <div className="text-sm font-medium mb-2">Tambah Perbaikan Baru</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">
+                Tanggal Perbaikan *
+              </label>
+              <input
+                value={form.tanggal}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, tanggal: e.target.value }))
+                }
+                type="date"
+                required
+                className="w-full p-2 border rounded text-sm"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <LocationSelector
+                asetId={asetId}
+                selectedLokasiId={form.lokasi_id}
+                onSelect={(id) =>
+                  setForm((prev) => ({ ...prev, lokasi_id: id }))
+                }
+                jumlahDiperlukan={1}
+                label="Ruangan"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">
+                Deskripsi Perbaikan
+              </label>
+              <input
+                placeholder="Contoh: Ganti hard disk"
+                value={form.deskripsi}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, deskripsi: e.target.value }))
+                }
+                className="w-full p-2 border rounded text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">
+                Teknisi
+              </label>
+              <input
+                placeholder="Nama teknisi"
+                value={form.teknisi}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, teknisi: e.target.value }))
+                }
+                className="w-full p-2 border rounded text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">
+                Biaya Perbaikan
+              </label>
+              <input
+                placeholder="Nominal biaya"
+                value={form.nominal}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, nominal: e.target.value }))
+                }
+                className="w-full p-2 border rounded text-sm"
+                type="number"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Vendor</label>
+              <input
+                placeholder="Nama vendor"
+                value={form.vendor}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, vendor: e.target.value }))
+                }
+                className="w-full p-2 border rounded text-sm"
+              />
+            </div>
+
+            <div className="md:col-span-2">
               <button
                 onClick={handleCreate}
-                className="px-3 py-2 bg-indigo-600 text-white rounded"
+                disabled={loading || !form.tanggal || !form.lokasi_id}
+                className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Tambah
+                {loading ? "Menyimpan..." : "Tambah Perbaikan"}
               </button>
             </div>
           </div>

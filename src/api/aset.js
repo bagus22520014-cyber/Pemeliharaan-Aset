@@ -383,6 +383,7 @@ export async function createPerbaikan(asetId, payload) {
   const headers = { "Content-Type": "application/json", ...getAuthHeaders() };
   const body = JSON.stringify({
     AsetId: asetId,
+    lokasi_id: payload.lokasi_id || payload.lokasiId,
     tanggal_perbaikan: payload.tanggal,
     deskripsi: payload.deskripsi || null,
     biaya: payload.biaya || null,

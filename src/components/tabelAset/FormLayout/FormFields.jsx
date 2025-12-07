@@ -316,7 +316,7 @@ export default function FormFields({
 
       {/* Distribusi Lokasi - Full width */}
       <div className="md:col-span-2">
-        <FormField label="Ruangan" isViewMode={isViewMode}>
+        <FormField label="Lokasi" isViewMode={isViewMode}>
           <div className="mt-2">
             <DistribusiLokasiInput
               distribusiLokasi={
