@@ -28,7 +28,37 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      "/rusak": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/dipinjam": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/dijual": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+        secure: false,
+      },
       "/riwayat": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/beban": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/departemen": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/aset-lokasi": {
         target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,

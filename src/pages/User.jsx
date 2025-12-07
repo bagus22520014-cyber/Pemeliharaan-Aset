@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   generateAsetId,
   getCurrentDate,
+  prepareAssetPayload,
   GROUPS,
-  BEBANS,
   AKUN,
   STATUSES,
 } from "@/utils/format";
@@ -14,6 +14,8 @@ import Confirm from "@/components/Confirm";
 import CreateAsset from "@/components/tabelAset/addAset/CreateAsset";
 import AssetDetail from "@/components/tabelAset/tabel/detail/AssetDetail";
 import { createAset, listAset } from "@/api/aset";
+import { listBeban } from "@/api/beban";
+import { listDepartemen } from "@/api/departemen";
 import SearchFilterBar from "@/components/tabelAset/filter/SearchFilterBar";
 import AssetTable from "@/components/tabelAset/tabel/AssetTable";
 
@@ -26,20 +28,24 @@ export default function User({ user, sessionUser, onLogout }) {
     spesifikasi: "",
     grup: "",
     beban: "",
+    departemen_id: "",
     akunPerkiraan: "",
     nilaiAset: "",
+    jumlah: 0,
+    nilai_satuan: "",
     tglPembelian: getCurrentDate(),
     masaManfaat: "",
     statusAset: "aktif",
     keterangan: "",
     pengguna: "",
     lokasi: "",
-    tempat: "",
+    distribusi_lokasi: [],
   });
-
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [assets, setAssets] = useState([]);
+  const [bebanList, setBebanList] = useState([]);
+  const [departemenList, setDepartemenList] = useState([]);
   const [alert, setAlert] = useState(null);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
   const tableRef = useRef(null);
@@ -50,6 +56,8 @@ export default function User({ user, sessionUser, onLogout }) {
   const [filterBeban, setFilterBeban] = useState("All");
   const [filterGroup, setFilterGroup] = useState("All");
   const [filterTahun, setFilterTahun] = useState("All");
+  const [filterDepartemen, setFilterDepartemen] = useState("All");
+  const [filterRuangan, setFilterRuangan] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
   const [search, setSearch] = useState("");
   const suggestedAsetId = useMemo(
@@ -85,15 +93,18 @@ export default function User({ user, sessionUser, onLogout }) {
       spesifikasi: "",
       grup: "",
       beban: "",
+      departemen_id: "",
       akunPerkiraan: "",
       nilaiAset: "",
+      jumlah: 0,
+      nilai_satuan: "",
       tglPembelian: getCurrentDate(),
       masaManfaat: "",
       statusAset: "aktif",
       keterangan: "",
       pengguna: "",
       lokasi: "",
-      tempat: "",
+      distribusi_lokasi: [],
     }));
 
   const handleCreateRequest = (e, file) => {
@@ -106,7 +117,7 @@ export default function User({ user, sessionUser, onLogout }) {
       { field: "namaAset", label: "Nama Aset" },
       { field: "grup", label: "Kategori" },
       { field: "akunPerkiraan", label: "Akun Perkiraan" },
-      { field: "beban", label: "Departemen" },
+      { field: "beban", label: "Beban" },
       { field: "tglPembelian", label: "Tanggal Perolehan" },
       { field: "nilaiAset", label: "Harga Perolehan" },
     ];
@@ -140,7 +151,38 @@ export default function User({ user, sessionUser, onLogout }) {
       };
       if (!form.asetId) setForm((f) => ({ ...f, asetId: suggestedAsetId }));
 
-      const created = await createAset(finalPayload);
+      // Convert beban kode to beban_id
+      const apiPayload = await prepareAssetPayload(finalPayload, bebanList);
+
+      const created = await createAset(apiPayload);
+
+      // Save distribusi_lokasi if present
+      if (
+        created &&
+        (created.id || created.asetId) &&
+        form.distribusi_lokasi &&
+        form.distribusi_lokasi.length > 0
+      ) {
+        const assetId = created.asetId || created.id;
+        const { createAsetLokasi } = await import("../api/aset-lokasi");
+
+        try {
+          // Save each location allocation
+          for (const loc of form.distribusi_lokasi) {
+            if (loc.lokasi && loc.jumlah > 0) {
+              await createAsetLokasi({
+                AsetId: assetId,
+                lokasi: loc.lokasi,
+                jumlah: parseInt(loc.jumlah) || 0,
+                keterangan: loc.keterangan || null,
+              });
+            }
+          }
+        } catch (locErr) {
+          console.error("Failed to save location distribution:", locErr);
+          // Continue anyway - asset is already created
+        }
+      }
 
       // Upload image if file is provided
       if (pendingFile) {
@@ -232,6 +274,14 @@ export default function User({ user, sessionUser, onLogout }) {
     );
   };
 
+  // Compute beban options from loaded beban list
+  const bebanOptions = useMemo(() => {
+    return bebanList
+      .filter((b) => b.aktif !== false) // Only active beban
+      .map((b) => b.kode)
+      .sort();
+  }, [bebanList]);
+
   // helper - return allowed bebans for a user's beban based on location prefix
   const getAllowedBebansForUser = (userBeban) => {
     const bebanList = parseBebans(userBeban);
@@ -244,7 +294,7 @@ export default function User({ user, sessionUser, onLogout }) {
       if (ub.includes("-")) prefix = ub.split("-")[0];
       else prefix = ub.slice(0, 3); // fallback: first 3 letters for non-hyphenated codes
       const prefixNorm = String(prefix).trim().toLowerCase();
-      BEBANS.forEach((b) => {
+      bebanOptions.forEach((b) => {
         const bb = String(b || "").trim();
         let bprefix = bb;
         if (bb.includes("-")) bprefix = bb.split("-")[0];
@@ -292,7 +342,7 @@ export default function User({ user, sessionUser, onLogout }) {
         );
         const sessionUserBebansSet = new Set(sessionUserBebansList);
         filteredList = list.filter((a) => {
-          const ab = String(a?.beban ?? "")
+          const ab = String(a?.bebanKode || a?.beban || "")
             .trim()
             .toLowerCase();
           // If asset has no beban, don't show it to a restricted user
@@ -312,27 +362,58 @@ export default function User({ user, sessionUser, onLogout }) {
     }
   };
 
+  const loadBebanList = async () => {
+    try {
+      const data = await listBeban();
+      setBebanList(data || []);
+    } catch (err) {
+      console.error("Failed to load beban list:", err);
+      setBebanList([]);
+    }
+  };
+
+  const loadDepartemenList = async () => {
+    try {
+      const data = await listDepartemen();
+      setDepartemenList(data || []);
+    } catch (err) {
+      console.error("Failed to load departemen list:", err);
+      setDepartemenList([]);
+    }
+  };
+
   React.useEffect(() => {
     loadAssets();
+    loadBebanList();
+    loadDepartemenList();
   }, [sessionUser]);
 
   // Allowed bebans for the current user (if not admin)
   const allowedBebans = React.useMemo(() => {
-    if (sessionUser?.role === "admin") return BEBANS;
+    if (sessionUser?.role === "admin") return bebanOptions;
 
     // Parse user beban - return only exact matches from database
     const parsed = parseBebans(sessionUser?.beban);
 
-    // Filter to only include valid bebans from BEBANS constant
+    // Filter to only include valid bebans from bebanOptions
     const validBebans = parsed.filter((b) =>
-      BEBANS.some((validBeban) => validBeban === b)
+      bebanOptions.some((validBeban) => validBeban === b)
     );
 
     if (validBebans && validBebans.length) return validBebans;
 
     // Fallback if no valid bebans found
-    return parsed.length > 0 ? parsed : [BEBANS[0]];
-  }, [sessionUser?.beban, sessionUser?.role, sessionUser?.username]);
+    return parsed.length > 0
+      ? parsed
+      : bebanOptions.length > 0
+      ? [bebanOptions[0]]
+      : [];
+  }, [
+    sessionUser?.beban,
+    sessionUser?.role,
+    sessionUser?.username,
+    bebanOptions,
+  ]);
 
   // Debug: Log when allowedBebans changes
 
@@ -396,6 +477,7 @@ export default function User({ user, sessionUser, onLogout }) {
                   groups={GROUPS}
                   akun={AKUN}
                   bebans={allowedBebans}
+                  departemen={departemenList}
                   disabledBeban={allowedBebans.length <= 1}
                   hideHeader={true}
                   readOnlyAsetId={true}
@@ -420,12 +502,21 @@ export default function User({ user, sessionUser, onLogout }) {
                 onFilterStatusChange={(v) => setFilterStatus(v)}
                 statuses={STATUSES}
                 showStatus={true}
+                showDepartemen={true}
+                departemen={departemenList}
+                filterDepartemen={filterDepartemen}
+                onFilterDepartemenChange={(v) => setFilterDepartemen(v)}
+                showRuangan={true}
+                filterRuangan={filterRuangan}
+                onFilterRuanganChange={(v) => setFilterRuangan(v)}
                 onResetFilters={() => {
                   // reset to show all allowed bebans by default (union), not a single CSV value
                   setFilterBeban("All");
                   setFilterGroup("All");
                   setFilterTahun("All");
                   setFilterStatus("All");
+                  setFilterDepartemen("All");
+                  setFilterRuangan("All");
                   setSearch("");
                 }}
                 showScan={true}
@@ -458,9 +549,9 @@ export default function User({ user, sessionUser, onLogout }) {
                     : String(filterBeban).trim().toLowerCase();
 
                 const filtered = assets.filter((a) => {
-                  const ab = String(a?.beban ?? "")
-                    .trim()
-                    .toLowerCase();
+                  const bebanValue =
+                    a?.bebanKode || a?.beban || a?.beban?.kode || "";
+                  const ab = String(bebanValue).trim().toLowerCase();
                   let matchBeban = false;
                   if (filterBeban === "All") {
                     if (sessionUser?.role !== "admin") {
@@ -488,10 +579,21 @@ export default function User({ user, sessionUser, onLogout }) {
                   const matchStatus =
                     filterStatus === "All" ||
                     (a.statusAset && a.statusAset === filterStatus);
+                  const matchDepartemen =
+                    filterDepartemen === "All" ||
+                    (a.departemen_id &&
+                      String(a.departemen_id) === String(filterDepartemen));
+                  const matchRuangan =
+                    filterRuangan === "All" ||
+                    a.distribusi_lokasi?.locations?.some(
+                      (loc) => loc.lokasi === filterRuangan
+                    );
                   if (!matchBeban) return false;
                   if (!matchGroup) return false;
                   if (!matchTahun) return false;
                   if (!matchStatus) return false;
+                  if (!matchDepartemen) return false;
+                  if (!matchRuangan) return false;
                   if (!q) return true;
                   const fields = [
                     a.namaAset,
@@ -508,7 +610,7 @@ export default function User({ user, sessionUser, onLogout }) {
                     assets={filtered}
                     showActions={false}
                     loading={loading}
-                    title={`Daftar Aset (Departemen: ${
+                    title={`Daftar Aset (Beban: ${
                       sessionUser?.beban ?? "All"
                     })`}
                     ref={tableRef}
@@ -532,7 +634,8 @@ export default function User({ user, sessionUser, onLogout }) {
                   onClose={() => setDetailAsset(null)}
                   userRole="user"
                   groups={GROUPS}
-                  bebans={BEBANS}
+                  bebans={bebanOptions}
+                  departemen={departemenList}
                   akun={AKUN}
                   onUpdated={(updated, type) => {
                     if (!updated) return;

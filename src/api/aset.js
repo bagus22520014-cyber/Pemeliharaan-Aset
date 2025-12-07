@@ -13,7 +13,6 @@ function normalizeAset(record) {
   if (r.NamaAset && !r.namaAset) r.namaAset = r.NamaAset;
   if (r.Spesifikasi && !r.spesifikasi) r.spesifikasi = r.Spesifikasi;
   if (r.Grup && !r.grup) r.grup = r.Grup;
-  if (r.Beban && !r.beban) r.beban = r.Beban;
   if (r.AkunPerkiraan && !r.akunPerkiraan) r.akunPerkiraan = r.AkunPerkiraan;
   if (r.NilaiAset && !r.nilaiAset) r.nilaiAset = r.NilaiAset;
   if (r.TglPembelian && !r.tglPembelian) r.tglPembelian = r.TglPembelian;
@@ -24,7 +23,31 @@ function normalizeAset(record) {
   if (r.MasaManfaat && !r.masaManfaat) r.masaManfaat = r.MasaManfaat;
   if (r.Pengguna && !r.pengguna) r.pengguna = r.Pengguna;
   if (r.Lokasi && !r.lokasi) r.lokasi = r.Lokasi;
-  if (r.Tempat && !r.tempat) r.tempat = r.Tempat;
+  if (r.jumlah === undefined && r.Jumlah !== undefined) r.jumlah = r.Jumlah;
+  if (r.nilai_satuan === undefined && r.NilaiSatuan !== undefined)
+    r.nilai_satuan = r.NilaiSatuan;
+  if (r.nilai_satuan === undefined && r.nilaiSatuan !== undefined)
+    r.nilai_satuan = r.nilaiSatuan;
+
+  // Handle beban_id and nested beban object
+  if (r.beban_id === undefined && r.BebanId !== undefined)
+    r.beban_id = r.BebanId;
+  if (r.beban && typeof r.beban === "object" && r.beban.kode) {
+    // Backend returns nested beban object, extract kode for backward compatibility
+    r.bebanKode = r.beban.kode;
+  } else if (r.Beban && !r.bebanKode) {
+    // Old format: Beban as string
+    r.bebanKode = r.Beban;
+  }
+
+  // Handle departemen_id and nested departemen object
+  if (r.departemen_id === undefined && r.DepartemenId !== undefined)
+    r.departemen_id = r.DepartemenId;
+  if (r.departemen && typeof r.departemen === "object" && r.departemen.nama) {
+    r.departemenNama = r.departemen.nama;
+    r.departemenKode = r.departemen.kode;
+  }
+
   if (r.ID && !r.id) r.id = r.ID;
   if (r.Id && !r.id) r.id = r.Id;
   // Support AsetId as a possible primary key returned by some backends
@@ -41,6 +64,12 @@ function normalizeAset(record) {
     if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
       r.tglPembelian = datePart;
     }
+  }
+  // Backend may return distribusi_lokasi as nested object with locations array
+  if (r.distribusi_lokasi && typeof r.distribusi_lokasi === "object") {
+    // Keep the structure for display
+    // Expected format: { total_allocated, available, locations: [...] }
+    r.distribusi_lokasi = r.distribusi_lokasi;
   }
   return r;
 }
@@ -95,9 +124,12 @@ function toServerAset(payload) {
     namaAset: "NamaAset",
     spesifikasi: "Spesifikasi",
     grup: "Grup",
-    beban: "Beban",
+    beban_id: "beban_id",
+    departemen_id: "departemen_id",
     akunPerkiraan: "AkunPerkiraan",
     nilaiAset: "NilaiAset",
+    jumlah: "jumlah",
+    nilai_satuan: "nilai_satuan",
     tglPembelian: "TglPembelian",
     statusAset: "StatusAset",
     status: "StatusAset",
@@ -105,7 +137,7 @@ function toServerAset(payload) {
     masaManfaat: "MasaManfaat",
     pengguna: "Pengguna",
     lokasi: "Lokasi",
-    tempat: "Tempat",
+    distribusi_lokasi: "distribusi_lokasi",
     id: "ID",
   };
   for (const [k, v] of Object.entries(payload)) {
@@ -313,6 +345,7 @@ function normalizePerbaikan(record) {
   if (r.ID && !r.id) r.id = r.ID;
   if (r.Id && !r.id) r.id = r.Id;
   if (r.AsetId && !r.asetId) r.asetId = r.AsetId;
+  if (r.tanggal_perbaikan && !r.tanggal) r.tanggal = r.tanggal_perbaikan;
   if (r.Tanggal && !r.tanggal) r.tanggal = r.Tanggal;
   // Normalize tanggal to YYYY-MM-DD date-only if it's an ISO string
   if (r.tanggal && typeof r.tanggal === "string" && r.tanggal.includes("T")) {
@@ -326,10 +359,11 @@ function normalizePerbaikan(record) {
       }
     } catch (err) {}
   }
-  if (r.PurchaseOrder && !r.purchaseOrder) r.purchaseOrder = r.PurchaseOrder;
-  if (r.Vendor && !r.vendor) r.vendor = r.Vendor;
-  if (r.Bagian && !r.bagian) r.bagian = r.Bagian;
-  if (r.Nominal && !r.nominal) r.nominal = r.Nominal;
+  // Map backend fields to frontend
+  if (r.deskripsi) r.deskripsi = r.deskripsi;
+  if (r.biaya) r.biaya = r.biaya;
+  if (r.teknisi) r.teknisi = r.teknisi;
+  if (r.status) r.status = r.status;
   return r;
 }
 
@@ -348,19 +382,21 @@ export async function listPerbaikan(asetId) {
 export async function createPerbaikan(asetId, payload) {
   const headers = { "Content-Type": "application/json", ...getAuthHeaders() };
   const body = JSON.stringify({
-    Tanggal: payload.tanggal,
-    PurchaseOrder: payload.purchaseOrder,
-    Vendor: payload.vendor,
-    Bagian: payload.bagian,
-    Nominal: payload.nominal,
     AsetId: asetId,
+    tanggal_perbaikan: payload.tanggal,
+    deskripsi: payload.deskripsi || null,
+    biaya: payload.biaya || null,
+    teknisi: payload.teknisi || null,
+    status: payload.status || "pending",
   });
+
   const res = await fetch(`/perbaikan`, {
     method: "POST",
     credentials: "include",
     headers,
     body,
   });
+
   const data = await handleResponse(res);
   return normalizePerbaikan(data);
 }
@@ -368,6 +404,245 @@ export async function createPerbaikan(asetId, payload) {
 export async function deletePerbaikan(id) {
   const encoded = encodeURIComponent(String(id));
   const res = await fetch(`/perbaikan/${encoded}`, {
+    method: "DELETE",
+    credentials: "include",
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(res);
+}
+
+// Rusak (damage) api helpers
+function normalizeRusak(record) {
+  if (!record || typeof record !== "object") return record;
+  const r = { ...record };
+  if (r.ID && !r.id) r.id = r.ID;
+  if (r.Id && !r.id) r.id = r.Id;
+  if (r.AsetId && !r.asetId) r.asetId = r.AsetId;
+  if (r.TglRusak && !r.tanggal) r.tanggal = r.TglRusak;
+  if (r.Tanggal && !r.tanggal) r.tanggal = r.Tanggal;
+  if (r.tanggal && typeof r.tanggal === "string" && r.tanggal.includes("T")) {
+    const datePart = r.tanggal.split("T")[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+      r.tanggal = datePart;
+    }
+  }
+  if (r.Kerusakan && !r.keterangan) r.keterangan = r.Kerusakan;
+  if (r.Keterangan && !r.keterangan) r.keterangan = r.Keterangan;
+  if (r.jumlah_rusak && !r.jumlahRusak) r.jumlahRusak = r.jumlah_rusak;
+  if (r.StatusRusak && !r.statusRusak) r.statusRusak = r.StatusRusak;
+  if (r.catatan && !r.catatan) r.catatan = r.catatan;
+  if (r.user_id && !r.userId) r.userId = r.user_id;
+  if (r.Username && !r.username) r.username = r.Username;
+  return r;
+}
+
+export async function listRusak(asetId) {
+  const encoded = encodeURIComponent(String(asetId));
+  const res = await fetch(`/rusak/aset/${encoded}`, {
+    credentials: "include",
+    headers: getAuthHeaders(),
+  });
+  const data = await handleResponse(res);
+  if (Array.isArray(data)) return data.map(normalizeRusak);
+  if (Array.isArray(data?.items)) return data.items.map(normalizeRusak);
+  return normalizeRusak(data);
+}
+
+export async function createRusak(asetId, payload) {
+  const headers = { "Content-Type": "application/json", ...getAuthHeaders() };
+  const body = JSON.stringify({
+    AsetId: asetId,
+    TglRusak: payload.tanggal,
+    Kerusakan: payload.keterangan,
+    jumlah_rusak: payload.jumlahRusak || 1,
+    StatusRusak: payload.statusRusak || "temporary",
+    catatan: payload.catatan,
+  });
+
+  const res = await fetch(`/rusak`, {
+    method: "POST",
+    credentials: "include",
+    headers,
+    body,
+  });
+
+  const data = await handleResponse(res);
+
+  // Handle response that might have nested structure
+  const rusak = data?.rusak || data;
+  return normalizeRusak(rusak);
+}
+
+export async function deleteRusak(id) {
+  const encoded = encodeURIComponent(String(id));
+  const res = await fetch(`/rusak/${encoded}`, {
+    method: "DELETE",
+    credentials: "include",
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(res);
+}
+
+// Dipinjam (borrowed) api helpers
+function normalizeDipinjam(record) {
+  if (!record || typeof record !== "object") return record;
+  const r = { ...record };
+  if (r.ID && !r.id) r.id = r.ID;
+  if (r.Id && !r.id) r.id = r.Id;
+  if (r.AsetId && !r.asetId) r.asetId = r.AsetId;
+  if (r.tanggal_pinjam && !r.tanggalPinjam) r.tanggalPinjam = r.tanggal_pinjam;
+  if (r.TglPinjam && !r.tanggalPinjam) r.tanggalPinjam = r.TglPinjam;
+  if (r.tanggal_kembali && !r.tanggalKembali)
+    r.tanggalKembali = r.tanggal_kembali;
+  // Normalize dates
+  if (
+    r.tanggalPinjam &&
+    typeof r.tanggalPinjam === "string" &&
+    r.tanggalPinjam.includes("T")
+  ) {
+    const datePart = r.tanggalPinjam.split("T")[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+      r.tanggalPinjam = datePart;
+    }
+  }
+  if (
+    r.tanggalKembali &&
+    typeof r.tanggalKembali === "string" &&
+    r.tanggalKembali.includes("T")
+  ) {
+    const datePart = r.tanggalKembali.split("T")[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+      r.tanggalKembali = datePart;
+    }
+  }
+  if (r.Peminjam && !r.peminjam) r.peminjam = r.Peminjam;
+  if (r.Keperluan && !r.keperluan) r.keperluan = r.Keperluan;
+  if (r.jumlah_dipinjam && !r.jumlahDipinjam)
+    r.jumlahDipinjam = r.jumlah_dipinjam;
+  if (r.Status && !r.status) r.status = r.Status;
+  if (r.user_id && !r.userId) r.userId = r.user_id;
+  if (r.Username && !r.username) r.username = r.Username;
+  return r;
+}
+
+export async function listDipinjam(asetId) {
+  const encoded = encodeURIComponent(String(asetId));
+  const res = await fetch(`/dipinjam/aset/${encoded}`, {
+    credentials: "include",
+    headers: getAuthHeaders(),
+  });
+  const data = await handleResponse(res);
+  if (Array.isArray(data)) return data.map(normalizeDipinjam);
+  if (Array.isArray(data?.items)) return data.items.map(normalizeDipinjam);
+  return normalizeDipinjam(data);
+}
+
+export async function createDipinjam(asetId, payload) {
+  const headers = { "Content-Type": "application/json", ...getAuthHeaders() };
+  const body = JSON.stringify({
+    AsetId: asetId,
+    tanggal_pinjam: payload.tanggalPinjam,
+    tanggal_kembali: payload.tanggalKembali,
+    peminjam: payload.peminjam,
+    keperluan: payload.keperluan || payload.catatan,
+    jumlah_dipinjam: payload.jumlahDipinjam || 1,
+    status: payload.status || "dipinjam",
+  });
+
+  const res = await fetch(`/dipinjam`, {
+    method: "POST",
+    credentials: "include",
+    headers,
+    body,
+  });
+
+  const data = await handleResponse(res);
+
+  // Handle response that might have nested structure
+  const dipinjam = data?.dipinjam || data;
+  return normalizeDipinjam(dipinjam);
+}
+
+export async function deleteDipinjam(id) {
+  const encoded = encodeURIComponent(String(id));
+  const res = await fetch(`/dipinjam/${encoded}`, {
+    method: "DELETE",
+    credentials: "include",
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(res);
+}
+
+// Dijual (sold) api helpers
+function normalizeDijual(record) {
+  if (!record || typeof record !== "object") return record;
+  const r = { ...record };
+  if (r.ID && !r.id) r.id = r.ID;
+  if (r.Id && !r.id) r.id = r.Id;
+  if (r.AsetId && !r.asetId) r.asetId = r.AsetId;
+  if (r.tanggal_jual && !r.tanggalJual) r.tanggalJual = r.tanggal_jual;
+  if (r.TglDijual && !r.tanggalJual) r.tanggalJual = r.TglDijual;
+  if (
+    r.tanggalJual &&
+    typeof r.tanggalJual === "string" &&
+    r.tanggalJual.includes("T")
+  ) {
+    const datePart = r.tanggalJual.split("T")[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+      r.tanggalJual = datePart;
+    }
+  }
+  if (r.Pembeli && !r.pembeli) r.pembeli = r.Pembeli;
+  if (r.harga_jual && !r.hargaJual) r.hargaJual = r.harga_jual;
+  if (r.HargaJual && !r.hargaJual) r.hargaJual = r.HargaJual;
+  if (r.jumlah_dijual && !r.jumlahDijual) r.jumlahDijual = r.jumlah_dijual;
+  if (r.Alasan && !r.catatan) r.catatan = r.Alasan;
+  if (r.catatan && !r.catatan) r.catatan = r.catatan;
+  if (r.user_id && !r.userId) r.userId = r.user_id;
+  if (r.Username && !r.username) r.username = r.Username;
+  return r;
+}
+
+export async function listDijual(asetId) {
+  const encoded = encodeURIComponent(String(asetId));
+  const res = await fetch(`/dijual/aset/${encoded}`, {
+    credentials: "include",
+    headers: getAuthHeaders(),
+  });
+  const data = await handleResponse(res);
+  if (Array.isArray(data)) return data.map(normalizeDijual);
+  if (Array.isArray(data?.items)) return data.items.map(normalizeDijual);
+  return normalizeDijual(data);
+}
+
+export async function createDijual(asetId, payload) {
+  const headers = { "Content-Type": "application/json", ...getAuthHeaders() };
+  const body = JSON.stringify({
+    AsetId: asetId,
+    tanggal_jual: payload.tanggalJual,
+    pembeli: payload.pembeli,
+    harga_jual: payload.hargaJual,
+    jumlah_dijual: payload.jumlahDijual || 1,
+    catatan: payload.catatan || payload.alasan,
+  });
+
+  const res = await fetch(`/dijual`, {
+    method: "POST",
+    credentials: "include",
+    headers,
+    body,
+  });
+
+  const data = await handleResponse(res);
+
+  // Handle response that might have nested structure
+  const dijual = data?.dijual || data;
+  return normalizeDijual(dijual);
+}
+
+export async function deleteDijual(id) {
+  const encoded = encodeURIComponent(String(id));
+  const res = await fetch(`/dijual/${encoded}`, {
     method: "DELETE",
     credentials: "include",
     headers: getAuthHeaders(),
@@ -426,5 +701,17 @@ export default {
   updateAset,
   deleteAset,
   uploadAsetImage,
+  listPerbaikan,
+  createPerbaikan,
+  deletePerbaikan,
+  listRusak,
+  createRusak,
+  deleteRusak,
+  listDipinjam,
+  createDipinjam,
+  deleteDipinjam,
+  listDijual,
+  createDijual,
+  deleteDijual,
   listRiwayat,
 };

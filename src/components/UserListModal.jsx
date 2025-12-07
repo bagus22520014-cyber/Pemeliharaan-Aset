@@ -143,7 +143,7 @@ export default function UserListModal({ open, onClose, bebans = [] }) {
   const saveEditBeban = async () => {
     if (!editingUser) return;
     if (!editSelectedBases || editSelectedBases.length === 0) {
-      setEditError("Pilih minimal 1 Departemen");
+      setEditError("Pilih minimal 1 Beban");
       return;
     }
     const dbBebans = expandBasesToDbValues(editSelectedBases);
@@ -228,7 +228,7 @@ export default function UserListModal({ open, onClose, bebans = [] }) {
       formRole !== "admin" &&
       (!selectedBases || selectedBases.length === 0)
     ) {
-      setCreateError("Pilih minimal 1 Departemen");
+      setCreateError("Pilih minimal 1 Beban");
       return;
     }
     const dbBebans =
@@ -312,7 +312,7 @@ export default function UserListModal({ open, onClose, bebans = [] }) {
                     <th className="p-2 font-semibold">Nama</th>
                     <th className="p-2 font-semibold">Username</th>
                     <th className="p-2 font-semibold">Role</th>
-                    <th className="p-2 font-semibold">Departemen</th>
+                    <th className="p-2 font-semibold">Beban</th>
                     <th className="p-2 font-semibold">Actions</th>
                   </tr>
                 </thead>
@@ -335,7 +335,7 @@ export default function UserListModal({ open, onClose, bebans = [] }) {
                           <button
                             onClick={() => openEditBeban(u)}
                             className="p-2 rounded-full border bg-white hover:bg-gray-50"
-                            title="Edit Departemen"
+                            title="Edit Beban"
                           >
                             <Pencil className="h-5 w-5 text-indigo-600" />
                           </button>
@@ -458,22 +458,26 @@ export default function UserListModal({ open, onClose, bebans = [] }) {
                 {formRole !== "admin" && (
                   <div>
                     <label className="block text-sm font-semibold mb-2">
-                      Departemen (pilih 1 atau lebih)
+                      Beban (pilih 1 atau lebih)
                     </label>
                     <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2 border rounded-md">
-                      {baseOptions.map((b) => (
-                        <label
-                          key={b}
-                          className="inline-flex items-center gap-2 whitespace-nowrap"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedBases.includes(b)}
-                            onChange={() => toggleBase(b)}
-                          />
-                          <span className="text-sm">{b}</span>
-                        </label>
-                      ))}
+                      {baseOptions.map((b) => {
+                        const bebanValue =
+                          typeof b === "string" ? b : b?.kode || String(b);
+                        return (
+                          <label
+                            key={bebanValue}
+                            className="inline-flex items-center gap-2 whitespace-nowrap"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedBases.includes(bebanValue)}
+                              onChange={() => toggleBase(bebanValue)}
+                            />
+                            <span className="text-sm">{bebanValue}</span>
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -517,8 +521,8 @@ export default function UserListModal({ open, onClose, bebans = [] }) {
       />
       <Confirm
         open={confirmDialog.open && confirmDialog.type === "editBeban"}
-        title="Konfirmasi Edit Departemen"
-        message={`Ubah departemen user "${confirmDialog.user?.username}"?`}
+        title="Konfirmasi Edit Beban"
+        message={`Ubah beban user "${confirmDialog.user?.username}"?`}
         confirmLabel="Save"
         cancelLabel="Cancel"
         onConfirm={() => confirmEditBeban()}
@@ -542,7 +546,7 @@ export default function UserListModal({ open, onClose, bebans = [] }) {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
           <div className="w-full max-w-md bg-white rounded-2xl shadow-lg ring-1 ring-gray-100 overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b">
-              <div className="text-lg font-semibold">Edit Departemen</div>
+              <div className="text-lg font-semibold">Edit Beban</div>
               <button
                 onClick={() => closeEditBeban()}
                 className="p-2 rounded-full hover:bg-gray-100"
@@ -556,22 +560,26 @@ export default function UserListModal({ open, onClose, bebans = [] }) {
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-semibold mb-2">
-                    Departemen (pilih 1 atau lebih)
+                    Beban (pilih 1 atau lebih)
                   </label>
                   <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2 border rounded-md">
-                    {baseOptions.map((b) => (
-                      <label
-                        key={b}
-                        className="inline-flex items-center gap-2 whitespace-nowrap"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={editSelectedBases.includes(b)}
-                          onChange={() => toggleEditBase(b)}
-                        />
-                        <span className="text-sm">{b}</span>
-                      </label>
-                    ))}
+                    {baseOptions.map((b) => {
+                      const bebanValue =
+                        typeof b === "string" ? b : b?.kode || String(b);
+                      return (
+                        <label
+                          key={bebanValue}
+                          className="inline-flex items-center gap-2 whitespace-nowrap"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={editSelectedBases.includes(bebanValue)}
+                            onChange={() => toggleEditBase(bebanValue)}
+                          />
+                          <span className="text-sm">{bebanValue}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
                 {editError && (

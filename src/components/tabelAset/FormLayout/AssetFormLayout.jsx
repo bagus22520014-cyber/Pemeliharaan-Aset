@@ -16,6 +16,7 @@ export default function AssetFormLayout({
   error = null,
   groups = [],
   bebans = [],
+  departemen = [],
   akun = [],
   asset = null,
   imageProps = {},
@@ -35,6 +36,8 @@ export default function AssetFormLayout({
   noBackdrop = false,
   showEditButton = false,
   onEdit,
+  distribusiLokasi = null,
+  onDistribusiChange = null,
 }) {
   const isViewMode = mode === "view";
   const isCreateMode = mode === "create";
@@ -133,6 +136,7 @@ export default function AssetFormLayout({
             displayData={displayData}
             groups={groups}
             bebans={bebans}
+            departemen={departemen}
             akun={akun}
             masterBebans={masterBebans}
             readOnlyAsetId={readOnlyAsetId}
@@ -143,6 +147,8 @@ export default function AssetFormLayout({
             disabledBeban={disabledBeban}
             copiedKey={copiedKey}
             handleCopyToClipboard={handleCopyToClipboard}
+            distribusiLokasi={distribusiLokasi}
+            onDistribusiChange={onDistribusiChange}
           />
         </div>
       </form>

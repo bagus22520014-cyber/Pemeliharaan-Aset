@@ -133,7 +133,7 @@ export default function TableHeader({
           style={{ width: "9%" }}
           className="p-3 font-semibold text-center border-l border-gray-200"
         >
-          Departemen
+          Beban
         </th>
 
         <th
@@ -206,13 +206,6 @@ export default function TableHeader({
           className="p-3 font-semibold text-center border-l border-gray-200"
         >
           Lokasi
-        </th>
-
-        <th
-          style={{ width: "8%" }}
-          className="p-3 font-semibold text-center border-l border-gray-200"
-        >
-          Tempat
         </th>
 
         <th

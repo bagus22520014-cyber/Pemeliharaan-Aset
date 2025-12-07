@@ -120,42 +120,6 @@ export const GROUPS = [
   "TANAH",
 ];
 
-export const BEBANS = [
-  "MLM",
-  "BJR-NET",
-  "BNT-NET",
-  "BTM-NET",
-  "GTO-NET",
-  "KDR-NET",
-  "LMP-NET",
-  "MLG-NET",
-  "PDG-NET",
-  "PKB-NET",
-  "PKP-NET",
-  "PLB-NET",
-  "SBY-NET",
-  "SMD-NET",
-  "SRG-NET",
-  "MLMKOB",
-  "MLMMET",
-  "MLMSDKB",
-  "MLMSL",
-  "BJR-MEDIA",
-  "BNT-MEDIA",
-  "BTM-MEDIA",
-  "GTO-MEDIA",
-  "KDR-MEDIA",
-  "LMP-MEDIA",
-  "MLG-MEDIA",
-  "PDG-MEDIA",
-  "PKB-MEDIA",
-  "PKP-MEDIA",
-  "PLB-MEDIA",
-  "SBY-MEDIA",
-  "SMD-MEDIA",
-  "SRG-MEDIA",
-];
-
 export const AKUN = [
   "1701-01 (Tanah)",
   "1701-02 (Bangunan)",
@@ -174,4 +138,47 @@ export function getCurrentDate() {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+/**
+ * Helper to map beban kode to beban_id for API payload
+ * This is a temporary solution until we fully migrate to beban_id in UI
+ */
+export async function mapBebanKodeToId(bebanKode, bebanList) {
+  if (!bebanKode) return null;
+  const beban = bebanList.find((b) => b.kode === bebanKode);
+  return beban?.id || null;
+}
+
+/**
+ * Helper to prepare asset payload for API
+ * Converts beban (kode string) to beban_id (integer)
+ * Keeps distribusi_lokasi array if present
+ */
+export async function prepareAssetPayload(formData, bebanList) {
+  const payload = { ...formData };
+
+  // If beban is a string (kode), convert to beban_id
+  if (payload.beban && typeof payload.beban === "string") {
+    const bebanId = await mapBebanKodeToId(payload.beban, bebanList);
+    if (bebanId) {
+      payload.beban_id = bebanId;
+      delete payload.beban; // Remove old field
+    }
+  }
+
+  // Keep distribusi_lokasi array if present - backend will handle it
+  // Format: [{ lokasi: "...", jumlah: N, keterangan: "..." }]
+  if (payload.distribusi_lokasi && Array.isArray(payload.distribusi_lokasi)) {
+    // Filter out empty entries
+    payload.distribusi_lokasi = payload.distribusi_lokasi.filter(
+      (d) => d && d.lokasi && d.jumlah > 0
+    );
+    // If no valid distributions, remove the field
+    if (payload.distribusi_lokasi.length === 0) {
+      delete payload.distribusi_lokasi;
+    }
+  }
+
+  return payload;
 }

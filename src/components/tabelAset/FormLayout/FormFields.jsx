@@ -2,6 +2,7 @@ import React from "react";
 import { formatRupiah, unformatRupiah } from "@/utils/format";
 import { FaRegEdit, FaLock } from "react-icons/fa";
 import FormField from "./FormField";
+import DistribusiLokasiInput from "./DistribusiLokasiInput";
 
 export default function FormFields({
   mode,
@@ -10,6 +11,7 @@ export default function FormFields({
   displayData,
   groups,
   bebans,
+  departemen,
   akun,
   masterBebans,
   readOnlyAsetId,
@@ -20,6 +22,8 @@ export default function FormFields({
   disabledBeban,
   copiedKey,
   handleCopyToClipboard,
+  distribusiLokasi = null,
+  onDistribusiChange = null,
 }) {
   const isViewMode = mode === "view";
 
@@ -144,10 +148,10 @@ export default function FormFields({
         )}
       </FormField>
 
-      {/* Nilai */}
+      {/* Harga Perolehan */}
       <FormField label="Harga Perolehan *" isViewMode={isViewMode}>
         {isViewMode ? (
-          <div className="text-base mt-1">
+          <div className="text-base mt-1 font-bold text-gray-900">
             {displayData?.nilaiAset != null
               ? formatRupiah(displayData.nilaiAset)
               : "-"}
@@ -162,16 +166,20 @@ export default function FormFields({
                 nilaiAset: unformatRupiah(e.target.value),
               })
             }
-            placeholder="Masukkan nilai aset"
+            placeholder="Masukkan total harga"
             className="w-full text-base mt-1 bg-transparent border-none p-0 focus:outline-none focus:ring-0"
           />
         )}
       </FormField>
 
-      {/* Departemen */}
-      <FormField label="Departemen *" isViewMode={isViewMode}>
+      {/* Beban */}
+      <FormField label="Beban *" isViewMode={isViewMode}>
         {isViewMode ? (
-          <div className="text-base mt-1">{displayData?.beban ?? "-"}</div>
+          <div className="text-base mt-1">
+            {typeof displayData?.beban === "string"
+              ? displayData.beban
+              : displayData?.beban?.kode || displayData?.bebanKode || "-"}
+          </div>
         ) : (
           <select
             value={form?.beban || ""}
@@ -181,19 +189,72 @@ export default function FormFields({
             style={{ color: form?.beban ? "#1f2937" : "#9ca3af" }}
           >
             <option value="" className="text-gray-400">
-              Pilih departemen
+              Pilih beban
             </option>
             {bebans && bebans.length > 0
-              ? bebans.map((b) => (
-                  <option key={b} className="text-gray-900">
-                    {b}
-                  </option>
-                ))
-              : masterBebans.map((b) => (
-                  <option key={b} className="text-gray-900">
-                    {b}
-                  </option>
-                ))}
+              ? bebans.map((b) => {
+                  const bebanValue =
+                    typeof b === "string" ? b : b?.kode || String(b);
+                  return (
+                    <option
+                      key={bebanValue}
+                      value={bebanValue}
+                      className="text-gray-900"
+                    >
+                      {bebanValue}
+                    </option>
+                  );
+                })
+              : masterBebans.map((b) => {
+                  const bebanValue =
+                    typeof b === "string" ? b : b?.kode || String(b);
+                  return (
+                    <option
+                      key={bebanValue}
+                      value={bebanValue}
+                      className="text-gray-900"
+                    >
+                      {bebanValue}
+                    </option>
+                  );
+                })}
+          </select>
+        )}
+      </FormField>
+
+      {/* Departemen */}
+      <FormField label="Departemen" isViewMode={isViewMode}>
+        {isViewMode ? (
+          <div className="text-base mt-1">
+            {displayData?.departemen?.nama ||
+              displayData?.departemenNama ||
+              displayData?.departemen?.kode ||
+              displayData?.departemenKode ||
+              "-"}
+          </div>
+        ) : (
+          <select
+            value={form?.departemen_id || ""}
+            onChange={(e) =>
+              setForm({ ...form, departemen_id: e.target.value })
+            }
+            className="w-full text-base mt-1 bg-transparent border-none p-0 focus:outline-none focus:ring-0 text-gray-400"
+            style={{ color: form?.departemen_id ? "#1f2937" : "#9ca3af" }}
+          >
+            <option value="" className="text-gray-400">
+              Pilih departemen
+            </option>
+            {departemen && departemen.length > 0 ? (
+              departemen.map((d) => (
+                <option key={d.id} value={d.id} className="text-gray-900">
+                  {d.nama || d.kode}
+                </option>
+              ))
+            ) : (
+              <option disabled className="text-gray-400">
+                Tidak ada departemen
+              </option>
+            )}
           </select>
         )}
       </FormField>
@@ -242,26 +303,68 @@ export default function FormFields({
         onChange={(e) => setForm({ ...form, pengguna: e.target.value })}
       />
 
-      {/* Tempat */}
-      <FormField
-        label="Tempat"
-        value={form?.tempat}
-        displayValue={displayData?.tempat}
-        isViewMode={isViewMode}
-        placeholder="Masukkan tempat"
-        onChange={(e) => setForm({ ...form, tempat: e.target.value })}
-      />
-
       {/* Lokasi */}
       <FormField
         label="Lokasi"
         value={form?.lokasi}
-        displayValue={displayData?.lokasi}
+        displayValue={displayData?.lokasi || displayData?.Lokasi}
         isViewMode={isViewMode}
         placeholder="Masukkan lokasi"
         onChange={(e) => setForm({ ...form, lokasi: e.target.value })}
         className="md:col-span-2"
       />
+
+      {/* Distribusi Lokasi - Full width */}
+      <div className="md:col-span-2">
+        <FormField label="Ruangan" isViewMode={isViewMode}>
+          <div className="mt-2">
+            <DistribusiLokasiInput
+              distribusiLokasi={
+                distribusiLokasi?.locations ||
+                form?.distribusi_lokasi ||
+                displayData?.distribusi_lokasi?.locations ||
+                []
+              }
+              onChange={(newDistribusi) => {
+                if (isViewMode && onDistribusiChange) {
+                  // In view mode, update the fetched distribusiLokasi state
+                  onDistribusiChange({
+                    ...distribusiLokasi,
+                    locations: newDistribusi,
+                    total_allocated: newDistribusi.reduce(
+                      (sum, loc) => sum + (parseInt(loc.jumlah) || 0),
+                      0
+                    ),
+                    available:
+                      (displayData?.jumlah || 0) -
+                      newDistribusi.reduce(
+                        (sum, loc) => sum + (parseInt(loc.jumlah) || 0),
+                        0
+                      ),
+                  });
+                } else {
+                  // In create/edit mode, update form
+                  setForm({ ...form, distribusi_lokasi: newDistribusi });
+                }
+              }}
+              totalJumlah={
+                isViewMode
+                  ? displayData?.jumlah || 0
+                  : parseInt(form?.jumlah) || 0
+              }
+              isViewMode={isViewMode}
+              asetId={displayData?.asetId || displayData?.id || null}
+              beban={
+                isViewMode
+                  ? typeof displayData?.beban === "string"
+                    ? displayData.beban
+                    : displayData?.beban?.kode || displayData?.bebanKode
+                  : form?.beban
+              }
+            />
+          </div>
+        </FormField>
+      </div>
     </div>
   );
 }

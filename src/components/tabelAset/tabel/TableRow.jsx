@@ -153,6 +153,11 @@ export default function TableRow({
       >
         <div className="p-3 overflow-x-auto whitespace-nowrap scrollbar-thin">
           {a.namaAset}
+          {a.jumlah && a.jumlah > 1 && (
+            <span className="ml-2 text-indigo-600 font-semibold">
+              ({a.jumlah})
+            </span>
+          )}
         </div>
       </td>
       <td
@@ -169,7 +174,10 @@ export default function TableRow({
       >
         <div className="p-3 overflow-x-auto whitespace-nowrap scrollbar-thin justify-center flex">
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-600 border border-indigo-100">
-            {a.beban}
+            {(() => {
+              const bebanValue = a.bebanKode || a.beban?.kode || a.beban;
+              return typeof bebanValue === "string" ? bebanValue : "-";
+            })()}
           </span>
         </div>
       </td>
@@ -204,14 +212,6 @@ export default function TableRow({
       >
         <div className="p-3 overflow-x-auto whitespace-nowrap scrollbar-thin">
           {a.lokasi || "-"}
-        </div>
-      </td>
-      <td
-        style={{ width: "150px", minWidth: "150px", maxWidth: "150px" }}
-        className="p-0 border-l border-gray-200"
-      >
-        <div className="p-3 overflow-x-auto whitespace-nowrap scrollbar-thin">
-          {a.tempat || "-"}
         </div>
       </td>
       <td

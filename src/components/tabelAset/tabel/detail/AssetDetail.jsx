@@ -14,6 +14,7 @@ export default function AssetDetail({
   userRole = "user",
   groups = [],
   bebans = [],
+  departemen = [],
   akun = [],
 }) {
   if (!asset) return null;
@@ -29,6 +30,8 @@ export default function AssetDetail({
     previewUrl,
     uploading,
     uploadError,
+    distribusiLokasi,
+    setDistribusiLokasi,
     inputRef,
     imageSrc,
     imgKey,
@@ -99,11 +102,14 @@ export default function AssetDetail({
                 error={updateError}
                 groups={groups}
                 bebans={bebans}
+                departemen={departemen}
                 akun={akun}
                 noBackdrop={true}
                 isEditing={isEditMode}
                 showEditButton={isAdmin && !isEditMode}
                 onEdit={handleStartEdit}
+                distribusiLokasi={distribusiLokasi}
+                onDistribusiChange={setDistribusiLokasi}
                 imageProps={{
                   previewUrl,
                   file,
@@ -144,7 +150,9 @@ export default function AssetDetail({
                   localAsset.asetId ??
                   localAsset.id
                 }
+                asset={asetRecord || localAsset}
                 onClose={onClose}
+                onUpdated={onUpdated}
               />
             )}
           </div>

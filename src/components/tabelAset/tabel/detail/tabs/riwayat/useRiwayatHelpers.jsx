@@ -1,0 +1,142 @@
+export const useRiwayatHelpers = () => {
+  const getAksiLabel = (jenisAksi) => {
+    const labels = {
+      input: "Baru",
+      edit: "Edit",
+      delete: "Hapus",
+      perbaikan_input: "Perbaikan",
+      perbaikan_edit: "Perbaikan - Edit",
+      perbaikan_delete: "Perbaikan - Hapus",
+      rusak_input: "Rusak",
+      rusak_edit: "Rusak - Edit",
+      rusak_delete: "Rusak - Hapus",
+      dipinjam_input: "Dipinjam",
+      dipinjam_edit: "Dipinjam - Edit",
+      dipinjam_delete: "Dipinjam - Hapus",
+      dijual_input: "Dijual",
+      dijual_edit: "Dijual - Edit",
+      dijual_delete: "Dijual - Hapus",
+    };
+    return labels[jenisAksi] || jenisAksi;
+  };
+
+  const getAksiColor = (jenisAksi) => {
+    const colors = {
+      input: "bg-green-100 text-green-700 border-green-300",
+      edit: "bg-blue-100 text-blue-700 border-blue-300",
+      delete: "bg-red-100 text-red-700 border-red-300",
+      perbaikan_input: "bg-yellow-100 text-yellow-700 border-yellow-300",
+      perbaikan_edit: "bg-yellow-100 text-yellow-700 border-yellow-300",
+      perbaikan_delete: "bg-red-100 text-red-700 border-red-300",
+      rusak_input: "bg-red-100 text-red-700 border-red-300",
+      rusak_edit: "bg-red-100 text-red-700 border-red-300",
+      rusak_delete: "bg-red-100 text-red-700 border-red-300",
+      dipinjam_input: "bg-indigo-100 text-indigo-700 border-indigo-300",
+      dipinjam_edit: "bg-indigo-100 text-indigo-700 border-indigo-300",
+      dipinjam_delete: "bg-red-100 text-red-700 border-red-300",
+      dijual_input: "bg-gray-100 text-gray-700 border-gray-300",
+      dijual_edit: "bg-gray-100 text-gray-700 border-gray-300",
+      dijual_delete: "bg-red-100 text-red-700 border-red-300",
+    };
+    return colors[jenisAksi] || "bg-gray-100 text-gray-700 border-gray-300";
+  };
+
+  const getIconColor = (jenisAksi) => {
+    if (jenisAksi?.includes("perbaikan")) return "bg-yellow-500";
+    if (jenisAksi?.includes("rusak")) return "bg-red-500";
+    if (jenisAksi?.includes("dipinjam")) return "bg-indigo-600";
+    if (jenisAksi?.includes("dijual")) return "bg-gray-500";
+    if (jenisAksi?.includes("delete")) return "bg-red-500";
+    if (jenisAksi?.includes("edit")) return "bg-blue-500";
+    if (jenisAksi?.includes("input")) return "bg-green-500";
+    return "bg-gray-500";
+  };
+
+  const getMonthName = (monthIndex) => {
+    const months = [
+      "Januari",
+      "Februari",
+      "Maret",
+      "April",
+      "Mei",
+      "Juni",
+      "Juli",
+      "Agustus",
+      "September",
+      "Oktober",
+      "November",
+      "Desember",
+    ];
+    return months[monthIndex];
+  };
+
+  const formatDate = (waktu) => {
+    if (!waktu) return "-";
+    try {
+      const d = new Date(waktu);
+      if (isNaN(d.getTime())) return waktu;
+
+      const pad = (n) => String(n).padStart(2, "0");
+      const date = `${pad(d.getDate())}/${pad(
+        d.getMonth() + 1
+      )}/${d.getFullYear()}`;
+      const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(
+        d.getSeconds()
+      )}`;
+
+      // Always show time
+      return `${date} ${time}`;
+    } catch {
+      return waktu;
+    }
+  };
+
+  const renderPerubahan = (perubahan) => {
+    if (!perubahan || typeof perubahan !== "object") return null;
+
+    const formatValue = (field, value) => {
+      if (value == null) return "null";
+
+      if (
+        (field === "TglPembelian" || field === "tglPembelian") &&
+        typeof value === "string" &&
+        value.includes("T")
+      ) {
+        const datePart = value.split("T")[0];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+          return datePart;
+        }
+      }
+
+      return value;
+    };
+
+    return (
+      <div className="mt-2 space-y-1 text-sm">
+        {Object.entries(perubahan).map(([field, change]) => {
+          if (!change || typeof change !== "object") return null;
+          const { before, after } = change;
+          return (
+            <div key={field} className="flex gap-2">
+              <span className="font-semibold text-gray-700">{field}:</span>
+              <span className="text-red-600">{formatValue(field, before)}</span>
+              <span>→</span>
+              <span className="text-green-600">
+                {formatValue(field, after)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return {
+    getAksiLabel,
+    getAksiColor,
+    getIconColor,
+    getMonthName,
+    formatDate,
+    renderPerubahan,
+  };
+};

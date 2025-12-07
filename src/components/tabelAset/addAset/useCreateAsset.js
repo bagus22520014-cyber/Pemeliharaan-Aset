@@ -24,6 +24,18 @@ export function useCreateAsset({
   const [zoomOpen, setZoomOpen] = useState(false);
   const inputRef = useRef(null);
 
+  // Auto-calculate nilai_satuan when nilaiAset or jumlah changes
+  useEffect(() => {
+    const nilaiAset = parseFloat(form?.nilaiAset) || 0;
+    const jumlah = parseInt(form?.jumlah) || 1;
+    if (nilaiAset > 0 && jumlah > 0) {
+      const nilaiSatuan = Math.floor(nilaiAset / jumlah);
+      if (form?.nilai_satuan !== nilaiSatuan) {
+        setForm((f) => ({ ...f, nilai_satuan: nilaiSatuan }));
+      }
+    }
+  }, [form?.nilaiAset, form?.jumlah]);
+
   // Force manualMode off if parent disallows manual editing
   useEffect(() => {
     if (readOnlyAsetId) setManualMode(false);

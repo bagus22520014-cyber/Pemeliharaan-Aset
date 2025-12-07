@@ -18,7 +18,14 @@ export default function FieldPanel({
         ? formatRupiah(asetRecord.nilaiAset)
         : "-",
     ],
-    ["Departemen", asetRecord?.beban ?? "-"],
+    [
+      "Beban",
+      (() => {
+        const bebanValue =
+          asetRecord?.bebanKode || asetRecord?.beban?.kode || asetRecord?.beban;
+        return typeof bebanValue === "string" ? bebanValue : "-";
+      })(),
+    ],
     ["Tanggal Pembelian", asetRecord?.tglPembelian ?? "-"],
     [
       "Masa Manfaat",
@@ -31,7 +38,7 @@ export default function FieldPanel({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {fields.map(([label, value], i) => {
           const isNilai = label === "Nilai";
-          const isDepartemen = label === "Departemen";
+          const isBeban = label === "Beban";
           const val = value ?? "-";
           const isAsetId = label === "Aset ID";
           const isAccurate = label === "Accurate ID";
@@ -40,7 +47,7 @@ export default function FieldPanel({
             <div
               key={i}
               className={`p-4 rounded-xl bg-white shadow-sm border border-gray-100 ${
-                isNilai || isDepartemen ? "" : ""
+                isNilai || isBeban ? "" : ""
               }`}
             >
               <div className="flex items-center justify-between">

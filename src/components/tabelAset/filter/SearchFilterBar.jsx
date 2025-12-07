@@ -1,7 +1,76 @@
 import React from "react";
 import { listAset } from "@/api/aset";
+import { listAsetLokasi } from "@/api/aset-lokasi";
 import { FaSearch, FaUndo } from "react-icons/fa";
 import ScanControl from "./barcode/ScanControl";
+
+// Component untuk filter ruangan
+function RuanganFilter({ value, onChange, filterBeban }) {
+  const [ruanganList, setRuanganList] = React.useState([]);
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    let mounted = true;
+    async function loadRuangan() {
+      setLoading(true);
+      try {
+        const data = await listAsetLokasi();
+        if (mounted) {
+          // Group by lokasi and get beban for each
+          const ruanganMap = new Map();
+          data.forEach((item) => {
+            if (item.lokasi && !ruanganMap.has(item.lokasi)) {
+              ruanganMap.set(item.lokasi, {
+                lokasi: item.lokasi,
+                beban: item.beban,
+              });
+            }
+          });
+          const sorted = Array.from(ruanganMap.values()).sort((a, b) =>
+            a.lokasi.localeCompare(b.lokasi)
+          );
+          setRuanganList(sorted);
+        }
+      } catch (err) {
+        if (mounted) setRuanganList([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    loadRuangan();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Filter ruangan by selected beban
+  const filteredRuangan = React.useMemo(() => {
+    if (filterBeban === "All") {
+      return ruanganList;
+    }
+    return ruanganList.filter((r) => r.beban === filterBeban);
+  }, [ruanganList, filterBeban]);
+
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange?.(e.target.value)}
+      disabled={loading}
+      className="h-12 px-4 rounded-xl border border-gray-300 text-sm bg-white 
+                 focus:ring-2 focus:ring-indigo-500 shadow-sm transition disabled:opacity-50"
+    >
+      <option value="All">
+        {loading ? "Loading ruangan..." : "Ruangan (semua)"}
+      </option>
+      {filteredRuangan.map((r) => (
+        <option key={r.lokasi} value={r.lokasi}>
+          {r.lokasi}
+          {filterBeban === "All" && r.beban ? ` (${r.beban})` : ""}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 export default function SearchFilterBar({
   filterBeban,
@@ -27,6 +96,14 @@ export default function SearchFilterBar({
   assets = [],
   onScanFound,
   useMaster = false,
+  // New filters
+  showDepartemen = false,
+  departemen = [],
+  filterDepartemen = "All",
+  onFilterDepartemenChange,
+  showRuangan = false,
+  filterRuangan = "All",
+  onFilterRuanganChange,
 }) {
   const [masterAssets, setMasterAssets] = React.useState([]);
   const [masterLoading, setMasterLoading] = React.useState(false);
@@ -34,7 +111,17 @@ export default function SearchFilterBar({
     bebans && bebans.length
       ? bebans
       : useMaster && masterAssets && masterAssets.length
-      ? Array.from(new Set(masterAssets.map((a) => a.beban))).filter(Boolean)
+      ? Array.from(
+          new Set(
+            masterAssets
+              .map((a) => {
+                const val = a.bebanKode || a.beban || a.beban?.kode;
+                // Ensure we return string, not object
+                return typeof val === "string" ? val : null;
+              })
+              .filter(Boolean)
+          )
+        )
       : [];
   React.useEffect(() => {
     let mounted = true;
@@ -73,6 +160,23 @@ export default function SearchFilterBar({
           <FaUndo className="h-5 w-5" />
         </button>
 
+        {/* STATUS FILTER */}
+        {showStatus && (
+          <select
+            value={filterStatus}
+            onChange={(e) => onFilterStatusChange?.(e.target.value)}
+            className="h-12 px-4 rounded-xl border border-gray-300 text-sm bg-white 
+                       focus:ring-2 focus:ring-indigo-500 shadow-sm transition"
+          >
+            <option value="All">Status (semua)</option>
+            {statuses.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        )}
+
         {/* BEBAN FILTER */}
         {showBeban && (
           <select
@@ -81,12 +185,16 @@ export default function SearchFilterBar({
             className="h-12 px-4 rounded-xl border border-gray-300 text-sm bg-white 
                        focus:ring-2 focus:ring-indigo-500 shadow-sm transition"
           >
-            <option value="All">Departemen (semua)</option>
-            {bebanOptions.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
+            <option value="All">Beban (semua)</option>
+            {bebanOptions.map((b) => {
+              const bebanValue =
+                typeof b === "string" ? b : b?.kode || String(b);
+              return (
+                <option key={bebanValue} value={bebanValue}>
+                  {bebanValue}
+                </option>
+              );
+            })}
           </select>
         )}
 
@@ -107,21 +215,30 @@ export default function SearchFilterBar({
           </select>
         )}
 
-        {/* STATUS FILTER */}
-        {showStatus && (
+        {/* DEPARTEMEN FILTER */}
+        {showDepartemen && (
           <select
-            value={filterStatus}
-            onChange={(e) => onFilterStatusChange?.(e.target.value)}
+            value={filterDepartemen}
+            onChange={(e) => onFilterDepartemenChange?.(e.target.value)}
             className="h-12 px-4 rounded-xl border border-gray-300 text-sm bg-white 
                        focus:ring-2 focus:ring-indigo-500 shadow-sm transition"
           >
-            <option value="All">Status (semua)</option>
-            {statuses.map((s) => (
-              <option key={s} value={s}>
-                {s}
+            <option value="All">Departemen (semua)</option>
+            {departemen.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.nama || d.kode}
               </option>
             ))}
           </select>
+        )}
+
+        {/* RUANGAN FILTER */}
+        {showRuangan && (
+          <RuanganFilter
+            value={filterRuangan}
+            onChange={onFilterRuanganChange}
+            filterBeban={filterBeban}
+          />
         )}
 
         {/* YEAR FILTER */}

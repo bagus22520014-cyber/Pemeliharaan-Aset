@@ -13,6 +13,7 @@ export default function CreateAsset({
   error = null,
   groups = [],
   bebans = [],
+  departemen = [],
   akun = [],
   disabledBeban = false,
   hideHeader = false,
@@ -58,6 +59,7 @@ export default function CreateAsset({
         onCancel={onCancel}
         groups={groups}
         bebans={bebans}
+        departemen={departemen}
         akun={akun}
         loading={loading}
         error={error}

@@ -8,14 +8,16 @@ import AssetDetail from "@/components/tabelAset/tabel/detail/AssetDetail";
 // formatRupiah used in `AssetTable` component; no longer needed here
 import Forbidden from "@/components/Forbidden";
 import { createAset, listAset } from "@/api/aset";
+import { listBeban } from "@/api/beban";
+import { listDepartemen } from "@/api/departemen";
 import { FaPlus } from "react-icons/fa";
 import Navbar from "@/components/Navbar";
 import UserListModal from "@/components/UserListModal";
 import {
   generateAsetId,
   getCurrentDate,
+  prepareAssetPayload,
   GROUPS,
-  BEBANS,
   AKUN,
   STATUSES,
 } from "@/utils/format";
@@ -23,6 +25,8 @@ import {
 export default function Admin({ user, onLogout, sessionUser }) {
   const [showCreate, setShowCreate] = useState(false);
   const [assets, setAssets] = useState([]);
+  const [bebanList, setBebanList] = useState([]);
+  const [departemenList, setDepartemenList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [alert, setAlert] = useState(null);
@@ -30,6 +34,8 @@ export default function Admin({ user, onLogout, sessionUser }) {
   const [filterGroup, setFilterGroup] = useState("All");
   const [filterTahun, setFilterTahun] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
+  const [filterDepartemen, setFilterDepartemen] = useState("All");
+  const [filterRuangan, setFilterRuangan] = useState("All");
 
   const [search, setSearch] = useState("");
   // Inline editing removed — only create is supported
@@ -45,15 +51,18 @@ export default function Admin({ user, onLogout, sessionUser }) {
     spesifikasi: "",
     grup: "",
     beban: "",
+    departemen_id: "",
     akunPerkiraan: "",
     nilaiAset: "",
+    jumlah: 0,
+    nilai_satuan: "",
     tglPembelian: getCurrentDate(),
     masaManfaat: "",
     statusAset: "aktif",
     keterangan: "",
     pengguna: "",
     lokasi: "",
-    tempat: "",
+    distribusi_lokasi: [],
   });
   const [logoutConfirm, setLogoutConfirm] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -84,7 +93,7 @@ export default function Admin({ user, onLogout, sessionUser }) {
     }
   }, [showCreate, suggestedAsetId]);
 
-  // load assets & effect (must be declared before potential early returns so hooks are stable)
+  // load assets & beban list
   const loadAssets = async () => {
     setLoading(true);
     setError(null);
@@ -121,7 +130,7 @@ export default function Admin({ user, onLogout, sessionUser }) {
         ? list.filter((a) =>
             sessionUserBebansSet.size > 0
               ? sessionUserBebansSet.has(
-                  String(a?.beban ?? "")
+                  String(a?.bebanKode || a?.beban || "")
                     .trim()
                     .toLowerCase()
                 )
@@ -136,9 +145,40 @@ export default function Admin({ user, onLogout, sessionUser }) {
       setLoading(false);
     }
   };
+
+  const loadBebanList = async () => {
+    try {
+      const data = await listBeban();
+      setBebanList(data || []);
+    } catch (err) {
+      console.error("Failed to load beban list:", err);
+      setBebanList([]);
+    }
+  };
+
+  const loadDepartemenList = async () => {
+    try {
+      const data = await listDepartemen();
+      setDepartemenList(data || []);
+    } catch (err) {
+      console.error("Failed to load departemen list:", err);
+      setDepartemenList([]);
+    }
+  };
+
+  // Compute beban options from loaded beban list
+  const bebanOptions = useMemo(() => {
+    return bebanList
+      .filter((b) => b.aktif !== false) // Only active beban
+      .map((b) => b.kode)
+      .sort();
+  }, [bebanList]);
+
   useEffect(() => {
-    // Re-load assets when sessionUser changes (e.g., after login)
+    // Re-load assets and beban when sessionUser changes
     loadAssets();
+    loadBebanList();
+    loadDepartemenList();
   }, [sessionUser]);
 
   // ESC key to close panel
@@ -176,15 +216,18 @@ export default function Admin({ user, onLogout, sessionUser }) {
       spesifikasi: "",
       grup: "",
       beban: "",
+      departemen_id: "",
       akunPerkiraan: "",
       nilaiAset: "",
+      jumlah: 0,
+      nilai_satuan: "",
       tglPembelian: getCurrentDate(),
       masaManfaat: "",
       statusAset: "aktif",
       keterangan: "",
       pengguna: "",
       lokasi: "",
-      tempat: "",
+      distribusi_lokasi: [],
     });
 
   const handleCreateRequest = (e, file) => {
@@ -197,7 +240,7 @@ export default function Admin({ user, onLogout, sessionUser }) {
       { field: "namaAset", label: "Nama Aset" },
       { field: "grup", label: "Kategori" },
       { field: "akunPerkiraan", label: "Akun Perkiraan" },
-      { field: "beban", label: "Departemen" },
+      { field: "beban", label: "Beban" },
       { field: "tglPembelian", label: "Tanggal Perolehan" },
       { field: "nilaiAset", label: "Harga Perolehan" },
     ];
@@ -233,7 +276,10 @@ export default function Admin({ user, onLogout, sessionUser }) {
       // also set the form state so the UI reflects it
       if (!form.asetId) setForm((f) => ({ ...f, asetId: suggestedAsetId }));
 
-      const created = await createAset(finalPayload);
+      // Convert beban kode to beban_id
+      const apiPayload = await prepareAssetPayload(finalPayload, bebanList);
+
+      const created = await createAset(apiPayload);
 
       // Upload image if file is provided
       if (pendingFile) {
@@ -265,6 +311,34 @@ export default function Admin({ user, onLogout, sessionUser }) {
           }
         }
       }
+      // Save distribusi_lokasi if present
+      if (
+        created &&
+        (created.id || created.asetId) &&
+        form.distribusi_lokasi &&
+        form.distribusi_lokasi.length > 0
+      ) {
+        const assetId = created.asetId || created.id;
+        const { createAsetLokasi } = await import("../api/aset-lokasi");
+
+        try {
+          // Save each location allocation
+          for (const loc of form.distribusi_lokasi) {
+            if (loc.lokasi && loc.jumlah > 0) {
+              await createAsetLokasi({
+                AsetId: assetId,
+                lokasi: loc.lokasi,
+                jumlah: parseInt(loc.jumlah) || 0,
+                keterangan: loc.keterangan || null,
+              });
+            }
+          }
+        } catch (locErr) {
+          console.error("Failed to save location distribution:", locErr);
+          // Continue anyway - asset is already created
+        }
+      }
+
       if (created && (created.id || created.asetId)) {
         setAssets((prev) => {
           const id = String(created.asetId ?? created.id);
@@ -375,7 +449,8 @@ export default function Admin({ user, onLogout, sessionUser }) {
                   loading={loading}
                   error={error}
                   groups={GROUPS}
-                  bebans={BEBANS}
+                  bebans={bebanOptions}
+                  departemen={departemenList}
                   akun={AKUN}
                   disabledBeban={false}
                   hideHeader={true}
@@ -390,7 +465,7 @@ export default function Admin({ user, onLogout, sessionUser }) {
               <SearchFilterBar
                 filterBeban={filterBeban}
                 onFilterChange={(v) => setFilterBeban(v)}
-                bebans={BEBANS}
+                bebans={bebanOptions}
                 filterGroup={filterGroup}
                 onFilterGroupChange={(v) => setFilterGroup(v)}
                 groups={GROUPS}
@@ -400,6 +475,13 @@ export default function Admin({ user, onLogout, sessionUser }) {
                 onFilterStatusChange={(v) => setFilterStatus(v)}
                 statuses={STATUSES}
                 showStatus={true}
+                showDepartemen={true}
+                departemen={departemenList}
+                filterDepartemen={filterDepartemen}
+                onFilterDepartemenChange={(v) => setFilterDepartemen(v)}
+                showRuangan={true}
+                filterRuangan={filterRuangan}
+                onFilterRuanganChange={(v) => setFilterRuangan(v)}
                 search={search}
                 onSearchChange={(v) => setSearch(v)}
                 onResetFilters={() => {
@@ -407,6 +489,8 @@ export default function Admin({ user, onLogout, sessionUser }) {
                   setFilterGroup("All");
                   setFilterTahun("All");
                   setFilterStatus("All");
+                  setFilterDepartemen("All");
+                  setFilterRuangan("All");
                   setSearch("");
                 }}
                 showScan={true}
@@ -423,8 +507,10 @@ export default function Admin({ user, onLogout, sessionUser }) {
               {(() => {
                 const q = search.trim().toLowerCase();
                 const filtered = assets.filter((a) => {
+                  const bebanValue =
+                    a.bebanKode || a.beban || a.beban?.kode || "";
                   const matchBeban =
-                    filterBeban === "All" || a.beban === filterBeban;
+                    filterBeban === "All" || bebanValue === filterBeban;
                   const matchGroup =
                     filterGroup === "All" || a.grup === filterGroup;
                   const tgl = a.tglPembelian
@@ -436,10 +522,21 @@ export default function Admin({ user, onLogout, sessionUser }) {
                   const matchStatus =
                     filterStatus === "All" ||
                     (a.statusAset && a.statusAset === filterStatus);
+                  const matchDepartemen =
+                    filterDepartemen === "All" ||
+                    (a.departemen_id &&
+                      String(a.departemen_id) === String(filterDepartemen));
+                  const matchRuangan =
+                    filterRuangan === "All" ||
+                    a.distribusi_lokasi?.locations?.some(
+                      (loc) => loc.lokasi === filterRuangan
+                    );
                   if (!matchBeban) return false;
                   if (!matchGroup) return false;
                   if (!matchTahun) return false;
                   if (!matchStatus) return false;
+                  if (!matchDepartemen) return false;
+                  if (!matchRuangan) return false;
                   if (!q) return true;
                   const fields = [
                     a.namaAset,
@@ -474,7 +571,7 @@ export default function Admin({ user, onLogout, sessionUser }) {
               <UserListModal
                 open={showUserModal}
                 onClose={() => setShowUserModal(false)}
-                bebans={BEBANS}
+                bebans={bebanOptions}
               />
             </div>
             {detailAsset && (
@@ -483,7 +580,8 @@ export default function Admin({ user, onLogout, sessionUser }) {
                 onClose={() => setDetailAsset(null)}
                 userRole="admin"
                 groups={GROUPS}
-                bebans={BEBANS}
+                bebans={bebanOptions}
+                departemen={departemenList}
                 akun={AKUN}
                 onUpdated={(updated, type) => {
                   // update local ed table with new asset returned after image upload or data update
