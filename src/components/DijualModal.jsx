@@ -18,11 +18,10 @@ export default function DijualModal({
   const today = new Date().toISOString().split("T")[0];
 
   const [form, setForm] = useState({
-    TglDijual: today,
+    tanggal_jual: today,
     lokasi_id: null,
-    HargaJual: "",
-    Pembeli: "",
-    jumlah_dijual: 1,
+    harga_jual: "",
+    pembeli: "",
     catatan: "",
   });
   const [loading, setLoading] = useState(false);
@@ -35,12 +34,12 @@ export default function DijualModal({
       return;
     }
 
-    if (!form.TglDijual) {
+    if (!form.tanggal_jual) {
       setError("Tanggal dijual harus diisi");
       return;
     }
 
-    if (!form.HargaJual || parseFloat(form.HargaJual) <= 0) {
+    if (!form.harga_jual || parseFloat(form.harga_jual) <= 0) {
       setError("Harga jual harus diisi dan lebih dari 0");
       return;
     }
@@ -52,10 +51,9 @@ export default function DijualModal({
       const payload = {
         AsetId: asetId,
         lokasi_id: form.lokasi_id,
-        TglDijual: form.TglDijual,
-        HargaJual: parseFloat(form.HargaJual),
-        Pembeli: form.Pembeli?.trim() || null,
-        jumlah_dijual: parseInt(form.jumlah_dijual) || 1,
+        tanggal_jual: form.tanggal_jual,
+        harga_jual: parseFloat(form.harga_jual),
+        pembeli: form.pembeli?.trim() || null,
         catatan: form.catatan || null,
       };
 
@@ -63,11 +61,10 @@ export default function DijualModal({
 
       // Reset form
       setForm({
-        TglDijual: today,
+        tanggal_jual: today,
         lokasi_id: null,
-        HargaJual: "",
-        Pembeli: "",
-        jumlah_dijual: 1,
+        harga_jual: "",
+        pembeli: "",
         catatan: "",
       });
 
@@ -119,9 +116,9 @@ export default function DijualModal({
               </label>
               <input
                 type="date"
-                value={form.TglDijual}
+                value={form.tanggal_jual}
                 onChange={(e) =>
-                  setForm((prev) => ({ ...prev, TglDijual: e.target.value }))
+                  setForm((prev) => ({ ...prev, tanggal_jual: e.target.value }))
                 }
                 disabled={loading}
                 required
@@ -134,30 +131,9 @@ export default function DijualModal({
               asetId={asetId}
               selectedLokasiId={form.lokasi_id}
               onSelect={(id) => setForm((prev) => ({ ...prev, lokasi_id: id }))}
-              jumlahDiperlukan={parseInt(form.jumlah_dijual) || 1}
+              jumlahDiperlukan={1}
               disabled={loading}
             />
-
-            {/* Jumlah Dijual */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Jumlah Dijual <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={form.jumlah_dijual}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    jumlah_dijual: e.target.value,
-                  }))
-                }
-                disabled={loading}
-                required
-                className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
-              />
-            </div>
 
             {/* Harga Jual */}
             <div>
@@ -167,18 +143,18 @@ export default function DijualModal({
               <input
                 type="number"
                 min="0"
-                value={form.HargaJual}
+                value={form.harga_jual}
                 onChange={(e) =>
-                  setForm((prev) => ({ ...prev, HargaJual: e.target.value }))
+                  setForm((prev) => ({ ...prev, harga_jual: e.target.value }))
                 }
                 disabled={loading}
                 required
                 placeholder="Contoh: 2000000"
                 className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
               />
-              {form.HargaJual && parseFloat(form.HargaJual) > 0 && (
+              {form.harga_jual && parseFloat(form.harga_jual) > 0 && (
                 <div className="mt-1 text-xs text-gray-600">
-                  {formatRupiah(parseFloat(form.HargaJual))}
+                  {formatRupiah(parseFloat(form.harga_jual))}
                 </div>
               )}
             </div>
@@ -190,9 +166,9 @@ export default function DijualModal({
               </label>
               <input
                 type="text"
-                value={form.Pembeli}
+                value={form.pembeli}
                 onChange={(e) =>
-                  setForm((prev) => ({ ...prev, Pembeli: e.target.value }))
+                  setForm((prev) => ({ ...prev, pembeli: e.target.value }))
                 }
                 disabled={loading}
                 placeholder="Contoh: PT ABC atau Nama Perorangan"
@@ -222,10 +198,10 @@ export default function DijualModal({
               onClick={() => setConfirmSubmit(true)}
               disabled={
                 loading ||
-                !form.TglDijual ||
+                !form.tanggal_jual ||
                 !form.lokasi_id ||
-                !form.HargaJual ||
-                parseFloat(form.HargaJual) <= 0
+                !form.harga_jual ||
+                parseFloat(form.harga_jual) <= 0
               }
               className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
             >
@@ -239,11 +215,9 @@ export default function DijualModal({
         <Confirm
           open={confirmSubmit}
           title="Konfirmasi Penjualan"
-          message={`Yakin ingin mencatat penjualan ${
-            form.jumlah_dijual
-          } unit aset dengan harga ${formatRupiah(
-            parseFloat(form.HargaJual)
-          )}? Stok akan dikurangi dari lokasi yang dipilih.`}
+          message={`Yakin ingin mencatat penjualan aset dengan harga ${formatRupiah(
+            parseFloat(form.harga_jual)
+          )}?`}
           onClose={() => setConfirmSubmit(false)}
           onConfirm={handleSubmit}
           confirmLabel="Ya, Catat Penjualan"

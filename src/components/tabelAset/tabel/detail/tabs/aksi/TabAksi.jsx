@@ -4,9 +4,16 @@ import PerbaikanTab from "./PerbaikanTab";
 import RusakTab from "./RusakTab";
 import DipinjamTab from "./DipinjamTab";
 import DijualTab from "./DijualTab";
+import MutasiTab from "./MutasiTab";
 import { useTabAksi } from "./useTabAksi";
 
-export default function TabAksi({ asetId, asset, onClose, onUpdated }) {
+export default function TabAksi({
+  asetId,
+  asset,
+  onClose,
+  onUpdated,
+  onSwitchToRiwayat,
+}) {
   const {
     activeSubTab,
     setActiveSubTab,
@@ -25,6 +32,9 @@ export default function TabAksi({ asetId, asset, onClose, onUpdated }) {
     sales,
     saleForm,
     setSaleForm,
+    mutations,
+    mutationForm,
+    setMutationForm,
     confirmDelete,
     setConfirmDelete,
     confirmCreate,
@@ -32,7 +42,7 @@ export default function TabAksi({ asetId, asset, onClose, onUpdated }) {
     handleCreateRequest,
     handleCreate,
     handleDelete,
-  } = useTabAksi(asetId, asset, onUpdated);
+  } = useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat);
 
   return (
     <div
@@ -61,6 +71,7 @@ export default function TabAksi({ asetId, asset, onClose, onUpdated }) {
             { key: "rusak", label: "Kerusakan" },
             { key: "dipinjam", label: "Peminjaman" },
             { key: "dijual", label: "Penjualan" },
+            { key: "mutasi", label: "Mutasi" },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -153,6 +164,22 @@ export default function TabAksi({ asetId, asset, onClose, onUpdated }) {
             }
           />
         )}
+
+        {/* Mutasi Tab */}
+        {activeSubTab === "mutasi" && (
+          <MutasiTab
+            asetId={asetId}
+            asset={asset}
+            form={mutationForm}
+            setForm={setMutationForm}
+            mutations={mutations}
+            loading={loading}
+            onCreateRequest={() => handleCreateRequest("mutasi")}
+            onDelete={(id) =>
+              setConfirmDelete({ open: true, id, type: "mutasi" })
+            }
+          />
+        )}
       </div>
 
       {/* Confirm Create Dialog */}
@@ -166,7 +193,9 @@ export default function TabAksi({ asetId, asset, onClose, onUpdated }) {
               ? "Kerusakan"
               : confirmCreate.type === "dipinjam"
               ? "Peminjaman"
-              : "Penjualan"
+              : confirmCreate.type === "dijual"
+              ? "Penjualan"
+              : "Mutasi"
           }`}
           message={`Tambah data ${confirmCreate.type} untuk aset ${asetId}?`}
           onClose={() => setConfirmCreate({ open: false, type: null })}

@@ -153,11 +153,6 @@ export default function TableRow({
       >
         <div className="p-3 overflow-x-auto whitespace-nowrap scrollbar-thin">
           {a.namaAset}
-          {a.jumlah && a.jumlah > 1 && (
-            <span className="ml-2 text-indigo-600 font-semibold">
-              ({a.jumlah})
-            </span>
-          )}
         </div>
       </td>
       <td

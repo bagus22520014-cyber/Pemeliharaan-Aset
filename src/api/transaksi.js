@@ -95,7 +95,6 @@ export async function listPerbaikan() {
  * @param {number} data.lokasi_id - Location ID from aset_lokasi
  * @param {string} data.TglRusak - Damage date (YYYY-MM-DD)
  * @param {string} [data.Kerusakan] - Damage description
- * @param {number} [data.jumlah_rusak] - Quantity damaged (default: 1)
  * @param {string} [data.StatusRusak] - Status (temporary/permanent)
  * @param {string} [data.catatan] - Notes
  * @returns {Promise<Object>} Created damage record with lokasi info
@@ -148,7 +147,6 @@ export async function listRusak() {
  * @param {string} data.Peminjam - Borrower name
  * @param {string} data.TglPinjam - Borrow date (YYYY-MM-DD)
  * @param {string} data.TglKembali - Return date (YYYY-MM-DD)
- * @param {number} [data.jumlah_dipinjam] - Quantity borrowed (default: 1)
  * @param {string} [data.StatusPeminjaman] - Status (borrowed/returned)
  * @param {string} [data.catatan] - Notes
  * @returns {Promise<Object>} Created borrow record with lokasi info
@@ -201,7 +199,6 @@ export async function listDipinjam() {
  * @param {string} data.TglDijual - Sale date (YYYY-MM-DD)
  * @param {number} data.HargaJual - Sale price
  * @param {string} [data.Pembeli] - Buyer name
- * @param {number} [data.jumlah_dijual] - Quantity sold (default: 1)
  * @param {string} [data.catatan] - Notes
  * @returns {Promise<Object>} Created sale record with lokasi info
  */

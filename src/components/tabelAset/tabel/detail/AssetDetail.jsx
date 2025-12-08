@@ -30,8 +30,6 @@ export default function AssetDetail({
     previewUrl,
     uploading,
     uploadError,
-    distribusiLokasi,
-    setDistribusiLokasi,
     inputRef,
     imageSrc,
     imgKey,
@@ -108,8 +106,6 @@ export default function AssetDetail({
                 isEditing={isEditMode}
                 showEditButton={isAdmin && !isEditMode}
                 onEdit={handleStartEdit}
-                distribusiLokasi={distribusiLokasi}
-                onDistribusiChange={setDistribusiLokasi}
                 imageProps={{
                   previewUrl,
                   file,
@@ -152,6 +148,7 @@ export default function AssetDetail({
                 }
                 asset={asetRecord || localAsset}
                 onClose={onClose}
+                onSwitchToRiwayat={() => setActiveTab("riwayat")}
                 onUpdated={onUpdated}
               />
             )}

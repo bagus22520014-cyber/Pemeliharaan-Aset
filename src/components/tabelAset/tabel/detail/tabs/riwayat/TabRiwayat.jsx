@@ -32,11 +32,49 @@ export default function TabRiwayat({ asetId, onClose }) {
       try {
         const data = await listRiwayat(asetId);
         console.log("Riwayat data:", data);
-        setHistory(data || []);
+
+        // Filter out edit_lokasi and duplicate mutasi records
+        const filteredData = (data || []).filter((item) => {
+          const jenisAksi = item.jenisAksi || item.jenis_aksi;
+          const tabelRef = item.tabelRef || item.tabel_ref;
+
+          // Skip edit_lokasi records
+          if (tabelRef === "aset_lokasi" || jenisAksi === "edit_lokasi") {
+            return false;
+          }
+
+          // Skip "edit" on aset table if it's related to mutasi
+          // We only want to show the mutasi_input record, not the aset edit
+          if (tabelRef === "aset" && jenisAksi === "edit") {
+            // Check if there's a corresponding mutasi record at the same time
+            const hasMutasiRecord = (data || []).some((other) => {
+              const otherRef = other.tabelRef || other.tabel_ref;
+              const otherAksi = other.jenisAksi || other.jenis_aksi;
+              const timeDiff = Math.abs(
+                new Date(item.waktu) - new Date(other.waktu)
+              );
+
+              // If there's a mutasi record within 2 seconds, skip this aset edit
+              return (
+                otherRef === "mutasi" &&
+                otherAksi === "input" &&
+                timeDiff < 2000
+              );
+            });
+
+            if (hasMutasiRecord) {
+              return false;
+            }
+          }
+
+          return true;
+        });
+
+        setHistory(filteredData);
 
         // Group by year and month
         const grouped = {};
-        (data || []).forEach((item) => {
+        filteredData.forEach((item) => {
           const date = new Date(item.waktu);
           const year = date.getFullYear();
           const month = date.getMonth(); // 0-11
@@ -51,7 +89,7 @@ export default function TabRiwayat({ asetId, onClose }) {
 
         // Fetch details for each record
         const details = {};
-        for (const item of data || []) {
+        for (const item of filteredData) {
           const tabelRef = item.tabelRef || item.tabel_ref;
           const recordId = item.recordId || item.record_id;
 

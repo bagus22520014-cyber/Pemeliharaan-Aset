@@ -1,5 +1,4 @@
 import React from "react";
-import LocationSelector from "@/components/LocationSelector";
 
 export default function DijualTab({
   asetId,
@@ -23,47 +22,23 @@ export default function DijualTab({
             </label>
             <input
               type="date"
-              value={form.tanggalJual}
+              value={form.tanggal_jual}
               onChange={(e) =>
-                setForm((prev) => ({ ...prev, tanggalJual: e.target.value }))
-              }
-              className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
-            />
-          </div>
-          <LocationSelector
-            asetId={asetId}
-            selectedLokasiId={form.lokasi_id}
-            onSelect={(lokasiId) =>
-              setForm((prev) => ({ ...prev, lokasi_id: lokasiId }))
-            }
-            jumlahDiperlukan={parseInt(form.jumlahDijual) || 1}
-            label="Ruangan"
-            required
-          />
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Pembeli
-            </label>
-            <input
-              type="text"
-              placeholder="Nama pembeli"
-              value={form.pembeli}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, pembeli: e.target.value }))
+                setForm((prev) => ({ ...prev, tanggal_jual: e.target.value }))
               }
               className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Harga Jual
+              Harga Jual (Rp) <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
-              placeholder="5000000"
-              value={form.hargaJual}
+              placeholder="Masukkan harga jual"
+              value={form.harga_jual}
               onChange={(e) =>
-                setForm((prev) => ({ ...prev, hargaJual: e.target.value }))
+                setForm((prev) => ({ ...prev, harga_jual: e.target.value }))
               }
               className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
               min="0"
@@ -71,17 +46,16 @@ export default function DijualTab({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Jumlah Dijual
+              Pembeli
             </label>
             <input
-              type="number"
-              placeholder="1"
-              value={form.jumlahDijual}
+              type="text"
+              placeholder="Masukkan nama pembeli"
+              value={form.pembeli}
               onChange={(e) =>
-                setForm((prev) => ({ ...prev, jumlahDijual: e.target.value }))
+                setForm((prev) => ({ ...prev, pembeli: e.target.value }))
               }
               className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
-              min="1"
             />
           </div>
           <div className="md:col-span-2">
@@ -89,7 +63,7 @@ export default function DijualTab({
               Catatan
             </label>
             <textarea
-              placeholder="Catatan atau alasan penjualan..."
+              placeholder="Masukkan catatan"
               value={form.catatan}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, catatan: e.target.value }))

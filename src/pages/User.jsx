@@ -31,15 +31,12 @@ export default function User({ user, sessionUser, onLogout }) {
     departemen_id: "",
     akunPerkiraan: "",
     nilaiAset: "",
-    jumlah: 0,
-    nilai_satuan: "",
     tglPembelian: getCurrentDate(),
     masaManfaat: "",
     statusAset: "aktif",
     keterangan: "",
     pengguna: "",
     lokasi: "",
-    distribusi_lokasi: [],
   });
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -57,7 +54,6 @@ export default function User({ user, sessionUser, onLogout }) {
   const [filterGroup, setFilterGroup] = useState("All");
   const [filterTahun, setFilterTahun] = useState("All");
   const [filterDepartemen, setFilterDepartemen] = useState("All");
-  const [filterRuangan, setFilterRuangan] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
   const [search, setSearch] = useState("");
   const suggestedAsetId = useMemo(
@@ -96,15 +92,12 @@ export default function User({ user, sessionUser, onLogout }) {
       departemen_id: "",
       akunPerkiraan: "",
       nilaiAset: "",
-      jumlah: 0,
-      nilai_satuan: "",
       tglPembelian: getCurrentDate(),
       masaManfaat: "",
       statusAset: "aktif",
       keterangan: "",
       pengguna: "",
       lokasi: "",
-      distribusi_lokasi: [],
     }));
 
   const handleCreateRequest = (e, file) => {
@@ -155,34 +148,6 @@ export default function User({ user, sessionUser, onLogout }) {
       const apiPayload = await prepareAssetPayload(finalPayload, bebanList);
 
       const created = await createAset(apiPayload);
-
-      // Save distribusi_lokasi if present
-      if (
-        created &&
-        (created.id || created.asetId) &&
-        form.distribusi_lokasi &&
-        form.distribusi_lokasi.length > 0
-      ) {
-        const assetId = created.asetId || created.id;
-        const { createAsetLokasi } = await import("../api/aset-lokasi");
-
-        try {
-          // Save each location allocation
-          for (const loc of form.distribusi_lokasi) {
-            if (loc.lokasi && loc.jumlah > 0) {
-              await createAsetLokasi({
-                AsetId: assetId,
-                lokasi: loc.lokasi,
-                jumlah: parseInt(loc.jumlah) || 0,
-                keterangan: loc.keterangan || null,
-              });
-            }
-          }
-        } catch (locErr) {
-          console.error("Failed to save location distribution:", locErr);
-          // Continue anyway - asset is already created
-        }
-      }
 
       // Upload image if file is provided
       if (pendingFile) {
@@ -506,9 +471,6 @@ export default function User({ user, sessionUser, onLogout }) {
                 departemen={departemenList}
                 filterDepartemen={filterDepartemen}
                 onFilterDepartemenChange={(v) => setFilterDepartemen(v)}
-                showRuangan={true}
-                filterRuangan={filterRuangan}
-                onFilterRuanganChange={(v) => setFilterRuangan(v)}
                 onResetFilters={() => {
                   // reset to show all allowed bebans by default (union), not a single CSV value
                   setFilterBeban("All");
@@ -516,7 +478,6 @@ export default function User({ user, sessionUser, onLogout }) {
                   setFilterTahun("All");
                   setFilterStatus("All");
                   setFilterDepartemen("All");
-                  setFilterRuangan("All");
                   setSearch("");
                 }}
                 showScan={true}
@@ -583,17 +544,11 @@ export default function User({ user, sessionUser, onLogout }) {
                     filterDepartemen === "All" ||
                     (a.departemen_id &&
                       String(a.departemen_id) === String(filterDepartemen));
-                  const matchRuangan =
-                    filterRuangan === "All" ||
-                    a.distribusi_lokasi?.locations?.some(
-                      (loc) => loc.lokasi === filterRuangan
-                    );
                   if (!matchBeban) return false;
                   if (!matchGroup) return false;
                   if (!matchTahun) return false;
                   if (!matchStatus) return false;
                   if (!matchDepartemen) return false;
-                  if (!matchRuangan) return false;
                   if (!q) return true;
                   const fields = [
                     a.namaAset,

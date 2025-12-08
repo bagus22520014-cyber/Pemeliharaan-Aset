@@ -8,13 +8,10 @@ export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
   const [repairs, setRepairs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
-    tanggal: "",
+    tanggal_perbaikan: "",
     lokasi_id: null,
-    purchaseOrder: "",
-    vendor: "",
-    bagian: "",
-    nominal: "",
     deskripsi: "",
+    biaya: "",
     teknisi: "",
   });
   const [confirm, setConfirm] = useState({ open: false, id: null });
@@ -47,13 +44,10 @@ export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
       const created = await createPerbaikan(asetId, form);
       setRepairs((prev) => [...(prev || []), created]);
       setForm({
-        tanggal: "",
+        tanggal_perbaikan: "",
         lokasi_id: null,
-        purchaseOrder: "",
-        vendor: "",
-        bagian: "",
-        nominal: "",
         deskripsi: "",
+        biaya: "",
         teknisi: "",
       });
       onChange?.(created);
@@ -92,9 +86,10 @@ export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm"
+              disabled={loading}
+              className="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm disabled:opacity-50"
             >
-              Close
+              Tutup
             </button>
           </div>
         </div>
@@ -113,22 +108,22 @@ export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
                 <thead className="text-gray-600 text-xs uppercase">
                   <tr>
                     <th className="p-2">Tanggal</th>
-                    <th className="p-2">PO</th>
-                    <th className="p-2">Vendor</th>
-                    <th className="p-2">Bagian</th>
-                    <th className="p-2">Nominal</th>
+                    <th className="p-2">Deskripsi</th>
+                    <th className="p-2">Teknisi</th>
+                    <th className="p-2">Biaya</th>
                     <th className="p-2">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="text-gray-700">
                   {repairs.map((r) => (
                     <tr key={r.id} className="border-t">
-                      <td className="p-2">{r.tanggal}</td>
-                      <td className="p-2">{r.purchaseOrder}</td>
-                      <td className="p-2">{r.vendor}</td>
-                      <td className="p-2">{r.bagian}</td>
                       <td className="p-2">
-                        {r.nominal ? formatRupiah(r.nominal) : "-"}
+                        {r.tanggal_perbaikan || r.tanggal}
+                      </td>
+                      <td className="p-2">{r.deskripsi || "-"}</td>
+                      <td className="p-2">{r.teknisi || "-"}</td>
+                      <td className="p-2">
+                        {r.biaya ? formatRupiah(r.biaya) : "-"}
                       </td>
                       <td className="p-2 text-right">
                         <button
@@ -150,17 +145,20 @@ export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
           <div className="text-sm font-medium mb-2">Tambah Perbaikan Baru</div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-600 mb-1">
-                Tanggal Perbaikan *
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tanggal Perbaikan <span className="text-red-500">*</span>
               </label>
               <input
-                value={form.tanggal}
+                value={form.tanggal_perbaikan}
                 onChange={(e) =>
-                  setForm((prev) => ({ ...prev, tanggal: e.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    tanggal_perbaikan: e.target.value,
+                  }))
                 }
                 type="date"
                 required
-                className="w-full p-2 border rounded text-sm"
+                className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
               />
             </div>
 
@@ -177,7 +175,7 @@ export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
             </div>
 
             <div>
-              <label className="block text-xs text-gray-600 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Deskripsi Perbaikan
               </label>
               <input
@@ -186,12 +184,13 @@ export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, deskripsi: e.target.value }))
                 }
-                className="w-full p-2 border rounded text-sm"
+                disabled={loading}
+                className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-gray-600 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Teknisi
               </label>
               <input
@@ -200,42 +199,38 @@ export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, teknisi: e.target.value }))
                 }
-                className="w-full p-2 border rounded text-sm"
+                disabled={loading}
+                className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-gray-600 mb-1">
-                Biaya Perbaikan
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Biaya Perbaikan (Rp)
               </label>
               <input
-                placeholder="Nominal biaya"
-                value={form.nominal}
+                placeholder="Contoh: 250000"
+                value={form.biaya}
                 onChange={(e) =>
-                  setForm((prev) => ({ ...prev, nominal: e.target.value }))
+                  setForm((prev) => ({ ...prev, biaya: e.target.value }))
                 }
-                className="w-full p-2 border rounded text-sm"
+                disabled={loading}
                 type="number"
+                min="0"
+                className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
               />
-            </div>
-
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Vendor</label>
-              <input
-                placeholder="Nama vendor"
-                value={form.vendor}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, vendor: e.target.value }))
-                }
-                className="w-full p-2 border rounded text-sm"
-              />
+              {form.biaya && parseFloat(form.biaya) > 0 && (
+                <div className="mt-1 text-xs text-gray-600">
+                  {formatRupiah(parseFloat(form.biaya))}
+                </div>
+              )}
             </div>
 
             <div className="md:col-span-2">
               <button
                 onClick={handleCreate}
-                disabled={loading || !form.tanggal || !form.lokasi_id}
-                className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={loading || !form.tanggal_perbaikan || !form.lokasi_id}
+                className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
                 {loading ? "Menyimpan..." : "Tambah Perbaikan"}
               </button>

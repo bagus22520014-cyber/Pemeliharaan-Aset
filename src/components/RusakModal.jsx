@@ -18,8 +18,6 @@ export default function RusakModal({
     TglRusak: new Date().toISOString().split("T")[0],
     lokasi_id: null,
     Kerusakan: "",
-    jumlah_rusak: 1,
-    StatusRusak: "temporary",
     catatan: "",
   });
   const [loading, setLoading] = useState(false);
@@ -46,8 +44,6 @@ export default function RusakModal({
         lokasi_id: form.lokasi_id,
         TglRusak: form.TglRusak,
         Kerusakan: form.Kerusakan || null,
-        jumlah_rusak: parseInt(form.jumlah_rusak) || 1,
-        StatusRusak: form.StatusRusak,
         catatan: form.catatan || null,
       };
 
@@ -58,8 +54,6 @@ export default function RusakModal({
         TglRusak: new Date().toISOString().split("T")[0],
         lokasi_id: null,
         Kerusakan: "",
-        jumlah_rusak: 1,
-        StatusRusak: "temporary",
         catatan: "",
       });
 
@@ -126,27 +120,9 @@ export default function RusakModal({
               asetId={asetId}
               selectedLokasiId={form.lokasi_id}
               onSelect={(id) => setForm((prev) => ({ ...prev, lokasi_id: id }))}
-              jumlahDiperlukan={parseInt(form.jumlah_rusak) || 1}
+              jumlahDiperlukan={1}
               disabled={loading}
             />
-
-            {/* Jumlah Rusak */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Jumlah Rusak <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={form.jumlah_rusak}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, jumlah_rusak: e.target.value }))
-                }
-                disabled={loading}
-                required
-                className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
-              />
-            </div>
 
             {/* Deskripsi Kerusakan */}
             <div>
@@ -163,26 +139,6 @@ export default function RusakModal({
                 placeholder="Contoh: Layar pecah, tidak bisa menyala"
                 className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
               />
-            </div>
-
-            {/* Status Rusak */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status Kerusakan
-              </label>
-              <select
-                value={form.StatusRusak}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, StatusRusak: e.target.value }))
-                }
-                disabled={loading}
-                className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
-              >
-                <option value="temporary">Sementara (Bisa Diperbaiki)</option>
-                <option value="permanent">
-                  Permanen (Tidak Bisa Diperbaiki)
-                </option>
-              </select>
             </div>
 
             {/* Catatan */}
@@ -218,7 +174,7 @@ export default function RusakModal({
         <Confirm
           open={confirmSubmit}
           title="Konfirmasi Aset Rusak"
-          message={`Yakin ingin mencatat ${form.jumlah_rusak} unit aset sebagai rusak? Stok akan dikurangi dari lokasi yang dipilih.`}
+          message="Yakin ingin mencatat aset ini sebagai rusak?"
           danger={true}
           onClose={() => setConfirmSubmit(false)}
           onConfirm={handleSubmit}

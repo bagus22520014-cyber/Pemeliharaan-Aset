@@ -43,28 +43,12 @@ export default function FormHeader({
               placeholder={isEditing ? "Edit Aset *" : "Nama Aset *"}
               className="w-80 text-xl font-semibold tracking-wide bg-transparent border-none p-0 focus:outline-none focus:ring-0 placeholder:text-gray-800"
             />
-            <div className="flex items-center gap-2 border-l border-gray-300 pl-3">
-              <span className="text-sm text-gray-600">Jumlah:</span>
-              <input
-                type="number"
-                min="0"
-                value={form?.jumlah ?? 0}
-                onChange={(e) => setForm({ ...form, jumlah: e.target.value })}
-                className="w-20 text-lg font-semibold text-indigo-600 bg-transparent border-none p-0 focus:outline-none focus:ring-0 text-center"
-              />
-            </div>
           </>
         ) : (
           <>
             <h2 className="text-xl font-semibold tracking-wide max-w-md truncate">
               {titleValue}
             </h2>
-            <div className="flex items-center gap-2 border-l border-gray-300 pl-3">
-              <span className="text-sm text-gray-600">Jumlah:</span>
-              <span className="text-lg font-semibold text-indigo-600">
-                {asset?.jumlah ?? 0}
-              </span>
-            </div>
           </>
         )}
       </div>

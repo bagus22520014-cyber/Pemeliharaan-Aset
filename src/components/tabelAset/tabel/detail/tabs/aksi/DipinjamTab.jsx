@@ -1,5 +1,4 @@
 import React from "react";
-import LocationSelector from "@/components/LocationSelector";
 
 export default function DipinjamTab({
   asetId,
@@ -23,34 +22,24 @@ export default function DipinjamTab({
             </label>
             <input
               type="date"
-              value={form.tanggalPinjam}
+              value={form.tanggal_pinjam}
               onChange={(e) =>
-                setForm((prev) => ({ ...prev, tanggalPinjam: e.target.value }))
+                setForm((prev) => ({ ...prev, tanggal_pinjam: e.target.value }))
               }
               className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
             />
           </div>
-          <LocationSelector
-            asetId={asetId}
-            selectedLokasiId={form.lokasi_id}
-            onSelect={(lokasiId) =>
-              setForm((prev) => ({ ...prev, lokasi_id: lokasiId }))
-            }
-            jumlahDiperlukan={parseInt(form.jumlahDipinjam) || 1}
-            label="Ruangan"
-            required
-          />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tanggal Kembali
+              Tanggal Kembali <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
-              value={form.tanggalKembali}
+              value={form.tanggal_kembali}
               onChange={(e) =>
                 setForm((prev) => ({
                   ...prev,
-                  tanggalKembali: e.target.value,
+                  tanggal_kembali: e.target.value,
                 }))
               }
               className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
@@ -62,7 +51,7 @@ export default function DipinjamTab({
             </label>
             <input
               type="text"
-              placeholder="Nama peminjam"
+              placeholder="Masukkan nama peminjam"
               value={form.peminjam}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, peminjam: e.target.value }))
@@ -70,45 +59,15 @@ export default function DipinjamTab({
               className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Jumlah Dipinjam
-            </label>
-            <input
-              type="number"
-              placeholder="1"
-              value={form.jumlahDipinjam}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, jumlahDipinjam: e.target.value }))
-              }
-              className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
-              min="1"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
-            <select
-              value={form.status}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, status: e.target.value }))
-              }
-              className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
-            >
-              <option value="dipinjam">Dipinjam</option>
-              <option value="dikembalikan">Dikembalikan</option>
-            </select>
-          </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Keperluan
+              Catatan
             </label>
             <textarea
-              placeholder="Keperluan peminjaman..."
-              value={form.keperluan}
+              placeholder="Masukkan catatan"
+              value={form.catatan}
               onChange={(e) =>
-                setForm((prev) => ({ ...prev, keperluan: e.target.value }))
+                setForm((prev) => ({ ...prev, catatan: e.target.value }))
               }
               className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
               rows="2"

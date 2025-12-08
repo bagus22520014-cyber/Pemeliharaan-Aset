@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { uploadAsetImage, listAset, updateAset } from "@/api/aset";
 import { listBeban } from "@/api/beban";
-import { getAsetLokasiByAsetId } from "@/api/aset-lokasi";
 import { getStatusClass, prepareAssetPayload } from "@/utils/format";
 import { generateBarcodeUrl } from "@/utils/barcode";
 
@@ -18,7 +17,6 @@ export function useAssetDetail({ asset, onUpdated }) {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
-  const [distribusiLokasi, setDistribusiLokasi] = useState(null);
   const inputRef = useRef(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editForm, setEditForm] = useState(null);
@@ -131,35 +129,16 @@ export function useAssetDetail({ asset, onUpdated }) {
       departemen_id: asetRecord.departemen_id || "",
       akunPerkiraan: asetRecord.akunPerkiraan || "",
       nilaiAset: asetRecord.nilaiAset || "",
-      jumlah: asetRecord.jumlah ?? 0,
-      nilai_satuan: asetRecord.nilai_satuan || "",
       tglPembelian: asetRecord.tglPembelian || "",
       masaManfaat: asetRecord.masaManfaat || "",
       statusAset: asetRecord.statusAset || "aktif",
       keterangan: asetRecord.keterangan || "",
       pengguna: asetRecord.pengguna || "",
       lokasi: asetRecord.lokasi || "",
-      distribusi_lokasi:
-        distribusiLokasi?.locations ||
-        asetRecord.distribusi_lokasi?.locations ||
-        [],
     });
     setIsEditMode(true);
     setUpdateError(null);
   };
-
-  // Auto-calculate nilai_satuan when nilaiAset or jumlah changes in edit mode
-  useEffect(() => {
-    if (!isEditMode || !editForm) return;
-    const nilaiAset = parseFloat(editForm?.nilaiAset) || 0;
-    const jumlah = parseInt(editForm?.jumlah) || 1;
-    if (nilaiAset > 0 && jumlah > 0) {
-      const nilaiSatuan = Math.floor(nilaiAset / jumlah);
-      if (editForm?.nilai_satuan !== nilaiSatuan) {
-        setEditForm((f) => ({ ...f, nilai_satuan: nilaiSatuan }));
-      }
-    }
-  }, [editForm?.nilaiAset, editForm?.jumlah, isEditMode]);
 
   const handleCancelEdit = () => {
     setIsEditMode(false);
@@ -205,46 +184,6 @@ export function useAssetDetail({ asset, onUpdated }) {
         asetRecord.asetId || asetRecord.id,
         apiPayload
       );
-
-      // Handle distribusi_lokasi updates if changed
-      if (distribusiLokasi && editForm.distribusi_lokasi) {
-        const assetId = asetRecord.asetId || asetRecord.id;
-        const { createAsetLokasi, updateAsetLokasi, getAsetLokasiByAsetId } =
-          await import("@/api/aset-lokasi");
-
-        try {
-          // Get current locations from backend
-          const currentData = await getAsetLokasiByAsetId(assetId);
-          const currentLocations = currentData?.locations || [];
-
-          // Create/update locations
-          for (const loc of editForm.distribusi_lokasi) {
-            if (loc.id) {
-              // Existing location - update it
-              await updateAsetLokasi(loc.id, {
-                lokasi: loc.lokasi,
-                jumlah: parseInt(loc.jumlah) || 0,
-                keterangan: loc.keterangan || null,
-              });
-            } else {
-              // New location - create it
-              await createAsetLokasi({
-                AsetId: assetId,
-                lokasi: loc.lokasi,
-                jumlah: parseInt(loc.jumlah) || 0,
-                keterangan: loc.keterangan || null,
-              });
-            }
-          }
-
-          // Refresh distribusi lokasi data
-          const refreshedData = await getAsetLokasiByAsetId(assetId);
-          setDistribusiLokasi(refreshedData);
-        } catch (locErr) {
-          console.error("Failed to update location distribution:", locErr);
-          // Continue anyway - asset is already updated
-        }
-      }
 
       setAsetRecord(updated);
       setLocalAsset(updated);
@@ -370,30 +309,6 @@ export function useAssetDetail({ asset, onUpdated }) {
     };
   }, []);
 
-  // Load distribusi lokasi
-  useEffect(() => {
-    let cancelled = false;
-    async function loadDistribusiLokasi() {
-      setDistribusiLokasi(null);
-      if (!asset) return;
-      const asetId = asset.asetId || asset.id;
-      if (!asetId) return;
-      try {
-        const data = await getAsetLokasiByAsetId(asetId);
-        if (!cancelled) {
-          setDistribusiLokasi(data);
-        }
-      } catch (err) {
-        // ignore fetch errors
-        if (!cancelled) setDistribusiLokasi(null);
-      }
-    }
-    loadDistribusiLokasi();
-    return () => {
-      cancelled = true;
-    };
-  }, [asset]);
-
   // Update image src
   useEffect(() => {
     const base = previewUrl || asetRecord?.gambar || null;
@@ -436,8 +351,6 @@ export function useAssetDetail({ asset, onUpdated }) {
     previewUrl,
     uploading,
     uploadError,
-    distribusiLokasi,
-    setDistribusiLokasi,
     inputRef,
     imageSrc,
     imgKey,

@@ -2,7 +2,6 @@ import React from "react";
 import { formatRupiah, unformatRupiah } from "@/utils/format";
 import { FaRegEdit, FaLock } from "react-icons/fa";
 import FormField from "./FormField";
-import DistribusiLokasiInput from "./DistribusiLokasiInput";
 
 export default function FormFields({
   mode,
@@ -22,8 +21,6 @@ export default function FormFields({
   disabledBeban,
   copiedKey,
   handleCopyToClipboard,
-  distribusiLokasi = null,
-  onDistribusiChange = null,
 }) {
   const isViewMode = mode === "view";
 
@@ -313,58 +310,6 @@ export default function FormFields({
         onChange={(e) => setForm({ ...form, lokasi: e.target.value })}
         className="md:col-span-2"
       />
-
-      {/* Distribusi Lokasi - Full width */}
-      <div className="md:col-span-2">
-        <FormField label="Lokasi" isViewMode={isViewMode}>
-          <div className="mt-2">
-            <DistribusiLokasiInput
-              distribusiLokasi={
-                distribusiLokasi?.locations ||
-                form?.distribusi_lokasi ||
-                displayData?.distribusi_lokasi?.locations ||
-                []
-              }
-              onChange={(newDistribusi) => {
-                if (isViewMode && onDistribusiChange) {
-                  // In view mode, update the fetched distribusiLokasi state
-                  onDistribusiChange({
-                    ...distribusiLokasi,
-                    locations: newDistribusi,
-                    total_allocated: newDistribusi.reduce(
-                      (sum, loc) => sum + (parseInt(loc.jumlah) || 0),
-                      0
-                    ),
-                    available:
-                      (displayData?.jumlah || 0) -
-                      newDistribusi.reduce(
-                        (sum, loc) => sum + (parseInt(loc.jumlah) || 0),
-                        0
-                      ),
-                  });
-                } else {
-                  // In create/edit mode, update form
-                  setForm({ ...form, distribusi_lokasi: newDistribusi });
-                }
-              }}
-              totalJumlah={
-                isViewMode
-                  ? displayData?.jumlah || 0
-                  : parseInt(form?.jumlah) || 0
-              }
-              isViewMode={isViewMode}
-              asetId={displayData?.asetId || displayData?.id || null}
-              beban={
-                isViewMode
-                  ? typeof displayData?.beban === "string"
-                    ? displayData.beban
-                    : displayData?.beban?.kode || displayData?.bebanKode
-                  : form?.beban
-              }
-            />
-          </div>
-        </FormField>
-      </div>
     </div>
   );
 }

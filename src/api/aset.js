@@ -23,11 +23,6 @@ function normalizeAset(record) {
   if (r.MasaManfaat && !r.masaManfaat) r.masaManfaat = r.MasaManfaat;
   if (r.Pengguna && !r.pengguna) r.pengguna = r.Pengguna;
   if (r.Lokasi && !r.lokasi) r.lokasi = r.Lokasi;
-  if (r.jumlah === undefined && r.Jumlah !== undefined) r.jumlah = r.Jumlah;
-  if (r.nilai_satuan === undefined && r.NilaiSatuan !== undefined)
-    r.nilai_satuan = r.NilaiSatuan;
-  if (r.nilai_satuan === undefined && r.nilaiSatuan !== undefined)
-    r.nilai_satuan = r.nilaiSatuan;
 
   // Handle beban_id and nested beban object
   if (r.beban_id === undefined && r.BebanId !== undefined)
@@ -65,12 +60,6 @@ function normalizeAset(record) {
       r.tglPembelian = datePart;
     }
   }
-  // Backend may return distribusi_lokasi as nested object with locations array
-  if (r.distribusi_lokasi && typeof r.distribusi_lokasi === "object") {
-    // Keep the structure for display
-    // Expected format: { total_allocated, available, locations: [...] }
-    r.distribusi_lokasi = r.distribusi_lokasi;
-  }
   return r;
 }
 
@@ -87,7 +76,8 @@ function getAuthHeaders(includeBebanHeader = true) {
     // Add x-username header for backend logging/audit trail
     if (user?.username) headers["x-username"] = String(user.username);
     // Add x-beban to support backend filtering by user 'beban' for non-admin users
-    if (includeBebanHeader && user?.beban) headers["x-beban"] = String(user.beban);
+    if (includeBebanHeader && user?.beban)
+      headers["x-beban"] = String(user.beban);
     return headers;
   } catch (err) {
     // failed to parse localStorage: ignore and return no headers
@@ -128,8 +118,6 @@ function toServerAset(payload) {
     departemen_id: "departemen_id",
     akunPerkiraan: "AkunPerkiraan",
     nilaiAset: "NilaiAset",
-    jumlah: "jumlah",
-    nilai_satuan: "nilai_satuan",
     tglPembelian: "TglPembelian",
     statusAset: "StatusAset",
     status: "StatusAset",
@@ -137,7 +125,6 @@ function toServerAset(payload) {
     masaManfaat: "MasaManfaat",
     pengguna: "Pengguna",
     lokasi: "Lokasi",
-    distribusi_lokasi: "distribusi_lokasi",
     id: "ID",
   };
   for (const [k, v] of Object.entries(payload)) {
@@ -384,11 +371,10 @@ export async function createPerbaikan(asetId, payload) {
   const body = JSON.stringify({
     AsetId: asetId,
     lokasi_id: payload.lokasi_id || payload.lokasiId,
-    tanggal_perbaikan: payload.tanggal,
+    tanggal_perbaikan: payload.tanggal_perbaikan || payload.tanggal,
     deskripsi: payload.deskripsi || null,
     biaya: payload.biaya || null,
     teknisi: payload.teknisi || null,
-    status: payload.status || "pending",
   });
 
   const res = await fetch(`/perbaikan`, {
@@ -429,7 +415,6 @@ function normalizeRusak(record) {
   }
   if (r.Kerusakan && !r.keterangan) r.keterangan = r.Kerusakan;
   if (r.Keterangan && !r.keterangan) r.keterangan = r.Keterangan;
-  if (r.jumlah_rusak && !r.jumlahRusak) r.jumlahRusak = r.jumlah_rusak;
   if (r.StatusRusak && !r.statusRusak) r.statusRusak = r.StatusRusak;
   if (r.catatan && !r.catatan) r.catatan = r.catatan;
   if (r.user_id && !r.userId) r.userId = r.user_id;
@@ -450,15 +435,16 @@ export async function listRusak(asetId) {
 }
 
 export async function createRusak(asetId, payload) {
-  const headers = { "Content-Type": "application/json", ...getAuthHeaders(false) };
+  const headers = {
+    "Content-Type": "application/json",
+    ...getAuthHeaders(false),
+  };
   const body = JSON.stringify({
     AsetId: asetId,
-    TglRusak: payload.tanggal,
+    TglRusak: payload.TglRusak,
     lokasi_id: payload.lokasi_id,
-    Kerusakan: payload.keterangan,
-    jumlah_rusak: payload.jumlahRusak || 1,
-    StatusRusak: payload.statusRusak || "temporary",
-    catatan: payload.catatan,
+    Kerusakan: payload.Kerusakan || null,
+    catatan: payload.catatan || null,
   });
 
   const res = await fetch(`/rusak`, {
@@ -519,8 +505,6 @@ function normalizeDipinjam(record) {
   }
   if (r.Peminjam && !r.peminjam) r.peminjam = r.Peminjam;
   if (r.Keperluan && !r.keperluan) r.keperluan = r.Keperluan;
-  if (r.jumlah_dipinjam && !r.jumlahDipinjam)
-    r.jumlahDipinjam = r.jumlah_dipinjam;
   if (r.Status && !r.status) r.status = r.Status;
   if (r.user_id && !r.userId) r.userId = r.user_id;
   if (r.Username && !r.username) r.username = r.Username;
@@ -540,16 +524,17 @@ export async function listDipinjam(asetId) {
 }
 
 export async function createDipinjam(asetId, payload) {
-  const headers = { "Content-Type": "application/json", ...getAuthHeaders(false) };
+  const headers = {
+    "Content-Type": "application/json",
+    ...getAuthHeaders(false),
+  };
   const body = JSON.stringify({
     AsetId: asetId,
     lokasi_id: payload.lokasi_id,
-    tanggal_pinjam: payload.tanggalPinjam,
-    tanggal_kembali: payload.tanggalKembali,
+    tanggal_pinjam: payload.tanggal_pinjam,
+    tanggal_kembali: payload.tanggal_kembali || null,
     peminjam: payload.peminjam,
-    keperluan: payload.keperluan || payload.catatan,
-    jumlah_dipinjam: payload.jumlahDipinjam || 1,
-    status: payload.status || "dipinjam",
+    catatan: payload.catatan || null,
   });
 
   const res = await fetch(`/dipinjam`, {
@@ -598,7 +583,6 @@ function normalizeDijual(record) {
   if (r.Pembeli && !r.pembeli) r.pembeli = r.Pembeli;
   if (r.harga_jual && !r.hargaJual) r.hargaJual = r.harga_jual;
   if (r.HargaJual && !r.hargaJual) r.hargaJual = r.HargaJual;
-  if (r.jumlah_dijual && !r.jumlahDijual) r.jumlahDijual = r.jumlah_dijual;
   if (r.Alasan && !r.catatan) r.catatan = r.Alasan;
   if (r.catatan && !r.catatan) r.catatan = r.catatan;
   if (r.user_id && !r.userId) r.userId = r.user_id;
@@ -619,15 +603,17 @@ export async function listDijual(asetId) {
 }
 
 export async function createDijual(asetId, payload) {
-  const headers = { "Content-Type": "application/json", ...getAuthHeaders(false) };
+  const headers = {
+    "Content-Type": "application/json",
+    ...getAuthHeaders(false),
+  };
   const body = JSON.stringify({
     AsetId: asetId,
     lokasi_id: payload.lokasi_id,
-    tanggal_jual: payload.tanggalJual,
-    pembeli: payload.pembeli,
-    harga_jual: payload.hargaJual,
-    jumlah_dijual: payload.jumlahDijual || 1,
-    catatan: payload.catatan || payload.alasan,
+    tanggal_jual: payload.tanggal_jual,
+    pembeli: payload.pembeli || null,
+    harga_jual: payload.harga_jual,
+    catatan: payload.catatan || null,
   });
 
   const res = await fetch(`/dijual`, {

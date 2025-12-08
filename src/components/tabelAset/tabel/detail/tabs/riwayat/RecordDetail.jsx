@@ -94,16 +94,6 @@ export function RecordDetail({ item, recordDetails }) {
               </span>
             </div>
           )}
-          {(detail.jumlah_rusak != null || detail.jumlahRusak != null) && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Jumlah Rusak:
-              </span>
-              <span className="text-gray-900 font-semibold">
-                {detail.jumlah_rusak || detail.jumlahRusak}
-              </span>
-            </div>
-          )}
           {(detail.StatusRusak || detail.statusRusak) && (
             <div className="flex gap-2">
               <span className="font-semibold text-gray-700 min-w-[120px]">
@@ -146,16 +136,14 @@ export function RecordDetail({ item, recordDetails }) {
               {formatDate(detail.tanggal_pinjam || detail.TglPinjam)}
             </span>
           </div>
-          {detail.tanggal_kembali && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Tanggal Kembali:
-              </span>
-              <span className="text-gray-900">
-                {formatDate(detail.tanggal_kembali)}
-              </span>
-            </div>
-          )}
+          <div className="flex gap-2">
+            <span className="font-semibold text-gray-700 min-w-[120px]">
+              Tanggal Kembali:
+            </span>
+            <span className="text-gray-900">
+              {formatDate(detail.tanggal_kembali || detail.TglKembali) || "-"}
+            </span>
+          </div>
           {(detail.peminjam || detail.Peminjam) && (
             <div className="flex gap-2">
               <span className="font-semibold text-gray-700 min-w-[120px]">
@@ -166,18 +154,7 @@ export function RecordDetail({ item, recordDetails }) {
               </span>
             </div>
           )}
-          {(detail.jumlah_dipinjam != null ||
-            detail.jumlahDipinjam != null) && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Jumlah Dipinjam:
-              </span>
-              <span className="text-gray-900 font-semibold">
-                {detail.jumlah_dipinjam || detail.jumlahDipinjam}
-              </span>
-            </div>
-          )}
-          {(detail.keperluan || detail.Keperluan) && (
+          {detail.keperluan && (
             <div className="flex gap-2">
               <span className="font-semibold text-gray-700 min-w-[120px]">
                 Keperluan:
@@ -221,16 +198,6 @@ export function RecordDetail({ item, recordDetails }) {
               </span>
             </div>
           )}
-          {(detail.jumlah_dijual != null || detail.jumlahDijual != null) && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Jumlah Dijual:
-              </span>
-              <span className="text-gray-900 font-semibold">
-                {detail.jumlah_dijual || detail.jumlahDijual}
-              </span>
-            </div>
-          )}
           {(detail.harga_jual != null || detail.HargaJual != null) && (
             <div className="flex gap-2">
               <span className="font-semibold text-gray-700 min-w-[120px]">
@@ -249,6 +216,60 @@ export function RecordDetail({ item, recordDetails }) {
               <span className="text-gray-900">
                 {detail.catatan || detail.alasan || detail.Alasan}
               </span>
+            </div>
+          )}
+        </div>
+      );
+
+    case "mutasi":
+      return (
+        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm space-y-1">
+          <div className="flex gap-2">
+            <span className="font-semibold text-gray-700 min-w-[120px]">
+              Tanggal Mutasi:
+            </span>
+            <span className="text-gray-900">
+              {formatDate(detail.TglMutasi)}
+            </span>
+          </div>
+          {(detail.departemen_asal_nama || detail.ruangan_asal) && (
+            <div className="flex gap-2">
+              <span className="font-semibold text-gray-700 min-w-[120px]">
+                Dari:
+              </span>
+              <span className="text-gray-900">
+                {[detail.departemen_asal_nama, detail.ruangan_asal]
+                  .filter(Boolean)
+                  .join(" - ") || "-"}
+              </span>
+            </div>
+          )}
+          {(detail.departemen_tujuan_nama || detail.ruangan_tujuan) && (
+            <div className="flex gap-2">
+              <span className="font-semibold text-gray-700 min-w-[120px]">
+                Ke:
+              </span>
+              <span className="text-gray-900">
+                {[detail.departemen_tujuan_nama, detail.ruangan_tujuan]
+                  .filter(Boolean)
+                  .join(" - ") || "-"}
+              </span>
+            </div>
+          )}
+          {detail.alasan && (
+            <div className="flex gap-2">
+              <span className="font-semibold text-gray-700 min-w-[120px]">
+                Alasan:
+              </span>
+              <span className="text-gray-900">{detail.alasan}</span>
+            </div>
+          )}
+          {detail.catatan && (
+            <div className="flex gap-2">
+              <span className="font-semibold text-gray-700 min-w-[120px]">
+                Catatan:
+              </span>
+              <span className="text-gray-900">{detail.catatan}</span>
             </div>
           )}
         </div>

@@ -12,10 +12,16 @@ import {
   listDijual,
   createDijual,
   deleteDijual,
+  updateAset,
 } from "@/api/aset";
+import {
+  listMutasi as getMutasiByAsetId,
+  createMutasi,
+  deleteMutasi,
+} from "@/api/mutasi";
 import { getCurrentDate } from "@/utils/format";
 
-export function useTabAksi(asetId, asset, onUpdated) {
+export function useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat) {
   const [activeSubTab, setActiveSubTab] = useState("perbaikan");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -24,47 +30,47 @@ export function useTabAksi(asetId, asset, onUpdated) {
   // Perbaikan state
   const [repairs, setRepairs] = useState([]);
   const [repairForm, setRepairForm] = useState({
-    tanggal: getCurrentDate(),
-    lokasi_id: null,
+    tanggal_perbaikan: getCurrentDate(),
     deskripsi: "",
     biaya: "",
     teknisi: "",
-    status: "pending",
   });
 
   // Rusak state
   const [damages, setDamages] = useState([]);
   const [damageForm, setDamageForm] = useState({
-    tanggal: getCurrentDate(),
-    lokasi_id: null,
-    keterangan: "",
-    tingkatKerusakan: "ringan",
-    estimasiBiaya: "",
-    jumlahRusak: 1,
-    statusRusak: "temporary",
+    TglRusak: getCurrentDate(),
+    Kerusakan: "",
     catatan: "",
   });
 
   // Dipinjam state
   const [borrows, setBorrows] = useState([]);
   const [borrowForm, setBorrowForm] = useState({
-    tanggalPinjam: getCurrentDate(),
-    tanggalKembali: "",
-    lokasi_id: null,
+    tanggal_pinjam: getCurrentDate(),
+    tanggal_kembali: "",
     peminjam: "",
-    keperluan: "",
-    jumlahDipinjam: 1,
-    status: "dipinjam",
+    catatan: "",
   });
 
   // Dijual state
   const [sales, setSales] = useState([]);
   const [saleForm, setSaleForm] = useState({
-    tanggalJual: getCurrentDate(),
-    lokasi_id: null,
+    tanggal_jual: getCurrentDate(),
     pembeli: "",
-    hargaJual: "",
-    jumlahDijual: 1,
+    harga_jual: "",
+    catatan: "",
+  });
+
+  // Mutasi state
+  const [mutations, setMutations] = useState([]);
+  const [mutationForm, setMutationForm] = useState({
+    tanggal: getCurrentDate(),
+    departemenAsalId: null,
+    departemenTujuanId: null,
+    ruanganAsal: "",
+    ruanganTujuan: "",
+    alasan: "",
     catatan: "",
   });
 
@@ -98,6 +104,9 @@ export function useTabAksi(asetId, asset, onUpdated) {
       } else if (activeSubTab === "dijual") {
         const list = await listDijual(asetId);
         setSales(Array.isArray(list) ? list : list ? [list] : []);
+      } else if (activeSubTab === "mutasi") {
+        const list = await getMutasiByAsetId(asetId);
+        setMutations(Array.isArray(list) ? list : list ? [list] : []);
       }
     } catch (err) {
       setError(`Gagal memuat data: ${err.message || err}`);
@@ -108,27 +117,38 @@ export function useTabAksi(asetId, asset, onUpdated) {
 
   // Validation functions
   function validateRepairForm() {
-    if (!repairForm.tanggal) return "Tanggal harus diisi";
-    if (!repairForm.lokasi_id) return "Lokasi harus dipilih";
+    if (!repairForm.tanggal_perbaikan) return "Tanggal harus diisi";
     return null;
   }
 
   function validateDamageForm() {
-    if (!damageForm.tanggal) return "Tanggal harus diisi";
-    if (!damageForm.lokasi_id) return "Lokasi harus dipilih";
+    if (!damageForm.TglRusak) return "Tanggal harus diisi";
     return null;
   }
 
   function validateBorrowForm() {
-    if (!borrowForm.tanggalPinjam) return "Tanggal pinjam harus diisi";
+    if (!borrowForm.tanggal_pinjam) return "Tanggal pinjam harus diisi";
     if (!borrowForm.peminjam?.trim()) return "Nama peminjam harus diisi";
-    if (!borrowForm.lokasi_id) return "Lokasi harus dipilih";
     return null;
   }
 
   function validateSaleForm() {
-    if (!saleForm.tanggalJual) return "Tanggal jual harus diisi";
-    if (!saleForm.lokasi_id) return "Lokasi harus dipilih";
+    if (!saleForm.tanggal_jual) return "Tanggal jual harus diisi";
+    if (!saleForm.harga_jual || parseFloat(saleForm.harga_jual) <= 0)
+      return "Harga jual harus diisi";
+    return null;
+  }
+
+  function validateMutationForm() {
+    if (!mutationForm.tanggal) return "Tanggal mutasi harus diisi";
+    const hasDepartemenChange =
+      mutationForm.departemenAsalId || mutationForm.departemenTujuanId;
+    const hasRuanganChange =
+      mutationForm.ruanganAsal || mutationForm.ruanganTujuan;
+    if (!hasDepartemenChange && !hasRuanganChange) {
+      return "Minimal harus mengisi departemen asal/tujuan atau ruangan asal/tujuan";
+    }
+    if (!mutationForm.alasan?.trim()) return "Alasan mutasi harus diisi";
     return null;
   }
 
@@ -139,6 +159,7 @@ export function useTabAksi(asetId, asset, onUpdated) {
     else if (type === "rusak") validationError = validateDamageForm();
     else if (type === "dipinjam") validationError = validateBorrowForm();
     else if (type === "dijual") validationError = validateSaleForm();
+    else if (type === "mutasi") validationError = validateMutationForm();
 
     if (validationError) {
       setError(validationError);
@@ -160,95 +181,146 @@ export function useTabAksi(asetId, asset, onUpdated) {
 
       if (type === "perbaikan") {
         created = await createPerbaikan(asetId, {
-          tanggal: repairForm.tanggal,
-          lokasi_id: repairForm.lokasi_id,
+          tanggal_perbaikan: repairForm.tanggal_perbaikan,
           deskripsi: repairForm.deskripsi,
           biaya: repairForm.biaya ? parseFloat(repairForm.biaya) : null,
           teknisi: repairForm.teknisi,
-          status: repairForm.status,
         });
         setRepairs((prev) => [...prev, created]);
         setRepairForm({
-          tanggal: getCurrentDate(),
-          lokasi_id: null,
+          tanggal_perbaikan: getCurrentDate(),
           deskripsi: "",
           biaya: "",
           teknisi: "",
-          status: "pending",
         });
         newStatus = "diperbaiki";
         setSuccess("Perbaikan berhasil ditambahkan");
+        // Switch to riwayat tab after 1 second
+        setTimeout(() => {
+          if (onSwitchToRiwayat) onSwitchToRiwayat();
+        }, 1000);
       } else if (type === "rusak") {
         created = await createRusak(asetId, {
-          tanggal: damageForm.tanggal,
-          lokasi_id: damageForm.lokasi_id,
-          keterangan: damageForm.keterangan,
-          tingkatKerusakan: damageForm.tingkatKerusakan,
-          estimasiBiaya: damageForm.estimasiBiaya
-            ? parseFloat(damageForm.estimasiBiaya)
-            : null,
-          jumlahRusak: parseInt(damageForm.jumlahRusak) || 1,
-          statusRusak: damageForm.statusRusak,
-          catatan: damageForm.catatan,
+          TglRusak: damageForm.TglRusak,
+          Kerusakan: damageForm.Kerusakan,
+          catatan: damageForm.catatan || null,
         });
         setDamages((prev) => [...prev, created]);
         setDamageForm({
-          tanggal: getCurrentDate(),
-          lokasi_id: null,
-          keterangan: "",
-          tingkatKerusakan: "ringan",
-          estimasiBiaya: "",
-          jumlahRusak: 1,
-          statusRusak: "temporary",
+          TglRusak: getCurrentDate(),
+          Kerusakan: "",
           catatan: "",
         });
         newStatus = "rusak";
         setSuccess("Data kerusakan berhasil ditambahkan");
+        // Switch to riwayat tab after 1 second
+        setTimeout(() => {
+          if (onSwitchToRiwayat) onSwitchToRiwayat();
+        }, 1000);
       } else if (type === "dipinjam") {
         created = await createDipinjam(asetId, {
-          tanggalPinjam: borrowForm.tanggalPinjam,
-          tanggalKembali: borrowForm.tanggalKembali || null,
-          lokasi_id: borrowForm.lokasi_id,
+          tanggal_pinjam: borrowForm.tanggal_pinjam,
+          tanggal_kembali: borrowForm.tanggal_kembali || null,
           peminjam: borrowForm.peminjam,
-          keperluan: borrowForm.keperluan,
-          jumlahDipinjam: parseInt(borrowForm.jumlahDipinjam) || 1,
-          status: borrowForm.status,
+          catatan: borrowForm.catatan || null,
         });
         setBorrows((prev) => [...prev, created]);
         setBorrowForm({
-          tanggalPinjam: getCurrentDate(),
-          tanggalKembali: "",
-          lokasi_id: null,
+          tanggal_pinjam: getCurrentDate(),
+          tanggal_kembali: "",
           peminjam: "",
-          keperluan: "",
-          jumlahDipinjam: 1,
-          status: "dipinjam",
+          catatan: "",
         });
         newStatus = "dipinjam";
         setSuccess("Data peminjaman berhasil ditambahkan");
+        // Switch to riwayat tab after 1 second
+        setTimeout(() => {
+          if (onSwitchToRiwayat) onSwitchToRiwayat();
+        }, 1000);
       } else if (type === "dijual") {
         created = await createDijual(asetId, {
-          tanggalJual: saleForm.tanggalJual,
-          lokasi_id: saleForm.lokasi_id,
-          pembeli: saleForm.pembeli,
-          hargaJual: saleForm.hargaJual ? parseFloat(saleForm.hargaJual) : null,
-          jumlahDijual: parseInt(saleForm.jumlahDijual) || 1,
-          catatan: saleForm.catatan,
+          tanggal_jual: saleForm.tanggal_jual,
+          pembeli: saleForm.pembeli || null,
+          harga_jual: saleForm.harga_jual
+            ? parseFloat(saleForm.harga_jual)
+            : null,
+          catatan: saleForm.catatan || null,
         });
         setSales((prev) => [...prev, created]);
         setSaleForm({
-          tanggalJual: getCurrentDate(),
-          lokasi_id: null,
+          tanggal_jual: getCurrentDate(),
           pembeli: "",
-          hargaJual: "",
-          jumlahDijual: 1,
+          harga_jual: "",
           catatan: "",
         });
         newStatus = "dijual";
         setSuccess("Data penjualan berhasil ditambahkan");
+        // Switch to riwayat tab after 1 second
+        setTimeout(() => {
+          if (onSwitchToRiwayat) onSwitchToRiwayat();
+        }, 1000);
+      } else if (type === "mutasi") {
+        // Backend expects numeric asset.id, not string asetId
+        const numericAssetId = asset?.id || asset?.ID;
+        if (!numericAssetId) {
+          throw new Error("Asset ID tidak ditemukan");
+        }
+        created = await createMutasi({
+          aset_id: numericAssetId,
+          TglMutasi: mutationForm.tanggal,
+          departemen_asal_id: mutationForm.departemenAsalId || null,
+          departemen_tujuan_id: mutationForm.departemenTujuanId || null,
+          ruangan_asal: mutationForm.ruanganAsal?.trim() || null,
+          ruangan_tujuan: mutationForm.ruanganTujuan?.trim() || null,
+          alasan: mutationForm.alasan.trim(),
+          catatan: mutationForm.catatan?.trim() || null,
+        });
+        setMutations((prev) => [...prev, created]);
+
+        // Update aset data setelah mutasi
+        const updatePayload = {};
+        if (mutationForm.departemenTujuanId) {
+          updatePayload.departemen_id = mutationForm.departemenTujuanId;
+        }
+        if (mutationForm.ruanganTujuan?.trim()) {
+          updatePayload.lokasi = mutationForm.ruanganTujuan.trim();
+        }
+
+        // Update aset jika ada perubahan
+        if (Object.keys(updatePayload).length > 0) {
+          try {
+            await updateAset(asetId, updatePayload);
+            // Update asset object untuk UI
+            const updatedAsset = {
+              ...asset,
+              ...updatePayload,
+            };
+            if (onUpdated) {
+              onUpdated(updatedAsset);
+            }
+          } catch (updateErr) {
+            console.error("Failed to update asset after mutasi:", updateErr);
+            // Continue anyway, mutasi sudah berhasil disimpan
+          }
+        }
+
+        setMutationForm({
+          tanggal: getCurrentDate(),
+          departemenAsalId: null,
+          departemenTujuanId: null,
+          ruanganAsal: "",
+          ruanganTujuan: "",
+          alasan: "",
+          catatan: "",
+        });
+        setSuccess("Data mutasi berhasil ditambahkan dan aset telah diupdate");
+        // Switch to riwayat tab after 1 second
+        setTimeout(() => {
+          if (onSwitchToRiwayat) onSwitchToRiwayat();
+        }, 1000);
       }
 
-      if (onUpdated) {
+      if (onUpdated && newStatus !== asset.statusAset) {
         onUpdated({ ...asset, statusAset: newStatus });
       }
     } catch (err) {
@@ -277,6 +349,9 @@ export function useTabAksi(asetId, asset, onUpdated) {
       } else if (type === "dijual") {
         await deleteDijual(id);
         setSales((prev) => prev.filter((r) => String(r.id) !== String(id)));
+      } else if (type === "mutasi") {
+        await deleteMutasi(id);
+        setMutations((prev) => prev.filter((r) => String(r.id) !== String(id)));
       }
       setSuccess("Data berhasil dihapus");
     } catch (err) {
@@ -305,6 +380,9 @@ export function useTabAksi(asetId, asset, onUpdated) {
     sales,
     saleForm,
     setSaleForm,
+    mutations,
+    mutationForm,
+    setMutationForm,
     confirmDelete,
     setConfirmDelete,
     confirmCreate,

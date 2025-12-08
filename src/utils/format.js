@@ -153,7 +153,6 @@ export async function mapBebanKodeToId(bebanKode, bebanList) {
 /**
  * Helper to prepare asset payload for API
  * Converts beban (kode string) to beban_id (integer)
- * Keeps distribusi_lokasi array if present
  */
 export async function prepareAssetPayload(formData, bebanList) {
   const payload = { ...formData };
@@ -164,19 +163,6 @@ export async function prepareAssetPayload(formData, bebanList) {
     if (bebanId) {
       payload.beban_id = bebanId;
       delete payload.beban; // Remove old field
-    }
-  }
-
-  // Keep distribusi_lokasi array if present - backend will handle it
-  // Format: [{ lokasi: "...", jumlah: N, keterangan: "..." }]
-  if (payload.distribusi_lokasi && Array.isArray(payload.distribusi_lokasi)) {
-    // Filter out empty entries
-    payload.distribusi_lokasi = payload.distribusi_lokasi.filter(
-      (d) => d && d.lokasi && d.jumlah > 0
-    );
-    // If no valid distributions, remove the field
-    if (payload.distribusi_lokasi.length === 0) {
-      delete payload.distribusi_lokasi;
     }
   }
 

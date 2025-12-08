@@ -1,5 +1,4 @@
 import React from "react";
-import LocationSelector from "@/components/LocationSelector";
 
 export default function RusakTab({
   asetId,
@@ -19,115 +18,38 @@ export default function RusakTab({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tanggal <span className="text-red-500">*</span>
+              Tanggal Rusak <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
-              value={form.tanggal}
+              value={form.TglRusak}
               onChange={(e) =>
-                setForm((prev) => ({ ...prev, tanggal: e.target.value }))
+                setForm((prev) => ({ ...prev, TglRusak: e.target.value }))
               }
               className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
             />
           </div>
-          <LocationSelector
-            asetId={asetId}
-            selectedLokasiId={form.lokasi_id}
-            onSelect={(lokasiId) =>
-              setForm((prev) => ({ ...prev, lokasi_id: lokasiId }))
-            }
-            jumlahDiperlukan={parseInt(form.jumlahRusak) || 1}
-            label="Ruangan"
-            required
-          />
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tingkat Kerusakan
-            </label>
-            <select
-              value={form.tingkatKerusakan}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  tingkatKerusakan: e.target.value,
-                }))
-              }
-              className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
-            >
-              <option value="ringan">Ringan</option>
-              <option value="sedang">Sedang</option>
-              <option value="berat">Berat</option>
-            </select>
-          </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Keterangan
+              Deskripsi Kerusakan
             </label>
             <textarea
-              placeholder="Deskripsi kerusakan..."
-              value={form.keterangan}
+              placeholder="Masukkan deskripsi kerusakan"
+              value={form.Kerusakan}
               onChange={(e) =>
-                setForm((prev) => ({ ...prev, keterangan: e.target.value }))
+                setForm((prev) => ({ ...prev, Kerusakan: e.target.value }))
               }
               className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
               rows="3"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Estimasi Biaya
-            </label>
-            <input
-              type="number"
-              placeholder="1500000"
-              value={form.estimasiBiaya}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, estimasiBiaya: e.target.value }))
-              }
-              className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
-              min="0"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Jumlah Rusak
-            </label>
-            <input
-              type="number"
-              placeholder="1"
-              value={form.jumlahRusak}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, jumlahRusak: e.target.value }))
-              }
-              className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
-              min="1"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status Kerusakan
-            </label>
-            <select
-              value={form.statusRusak}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  statusRusak: e.target.value,
-                }))
-              }
-              className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
-            >
-              <option value="temporary">Temporary</option>
-              <option value="permanent">Permanent</option>
-            </select>
-          </div>
-          <div>
+          <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Catatan
             </label>
             <input
               type="text"
-              placeholder="Catatan tambahan..."
+              placeholder="Masukkan catatan tambahan"
               value={form.catatan}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, catatan: e.target.value }))

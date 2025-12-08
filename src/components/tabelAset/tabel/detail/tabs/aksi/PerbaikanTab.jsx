@@ -1,5 +1,4 @@
 import React from "react";
-import LocationSelector from "@/components/LocationSelector";
 
 export default function PerbaikanTab({
   asetId,
@@ -19,47 +18,40 @@ export default function PerbaikanTab({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tanggal <span className="text-red-500">*</span>
+              Tanggal Perbaikan <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
-              value={form.tanggal}
+              value={form.tanggal_perbaikan}
               onChange={(e) =>
-                setForm((prev) => ({ ...prev, tanggal: e.target.value }))
+                setForm((prev) => ({
+                  ...prev,
+                  tanggal_perbaikan: e.target.value,
+                }))
               }
               className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
             />
           </div>
-          <LocationSelector
-            asetId={asetId}
-            selectedLokasiId={form.lokasi_id}
-            onSelect={(lokasiId) =>
-              setForm((prev) => ({ ...prev, lokasi_id: lokasiId }))
-            }
-            label="Ruangan"
-            required
-          />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status
+              Vendor
             </label>
-            <select
-              value={form.status}
+            <input
+              type="text"
+              placeholder="Masukkan nama vendor"
+              value={form.teknisi}
               onChange={(e) =>
-                setForm((prev) => ({ ...prev, status: e.target.value }))
+                setForm((prev) => ({ ...prev, teknisi: e.target.value }))
               }
               className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
-            >
-              <option value="pending">Pending</option>
-              <option value="selesai">Selesai</option>
-            </select>
+            />
           </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Deskripsi
+              Deskripsi Perbaikan
             </label>
             <textarea
-              placeholder="Deskripsi perbaikan..."
+              placeholder="Masukkan deskripsi perbaikan"
               value={form.deskripsi}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, deskripsi: e.target.value }))
@@ -70,18 +62,17 @@ export default function PerbaikanTab({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Biaya
+              Biaya Perbaikan (Rp)
             </label>
             <input
               type="number"
-              placeholder="500000"
+              placeholder="Masukkan biaya perbaikan"
               value={form.biaya}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, biaya: e.target.value }))
               }
               className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
               min="0"
-              step="1000"
             />
           </div>
         </div>

@@ -20,12 +20,10 @@ export default function DipinjamModal({
     .split("T")[0];
 
   const [form, setForm] = useState({
-    TglPinjam: today,
-    TglKembali: nextWeek,
+    tanggal_pinjam: today,
+    tanggal_kembali: nextWeek,
     lokasi_id: null,
-    Peminjam: "",
-    jumlah_dipinjam: 1,
-    StatusPeminjaman: "borrowed",
+    peminjam: "",
     catatan: "",
   });
   const [loading, setLoading] = useState(false);
@@ -38,12 +36,12 @@ export default function DipinjamModal({
       return;
     }
 
-    if (!form.TglPinjam || !form.TglKembali) {
+    if (!form.tanggal_pinjam || !form.tanggal_kembali) {
       setError("Tanggal pinjam dan kembali harus diisi");
       return;
     }
 
-    if (!form.Peminjam?.trim()) {
+    if (!form.peminjam?.trim()) {
       setError("Nama peminjam harus diisi");
       return;
     }
@@ -55,11 +53,9 @@ export default function DipinjamModal({
       const payload = {
         AsetId: asetId,
         lokasi_id: form.lokasi_id,
-        Peminjam: form.Peminjam.trim(),
-        TglPinjam: form.TglPinjam,
-        TglKembali: form.TglKembali,
-        jumlah_dipinjam: parseInt(form.jumlah_dipinjam) || 1,
-        StatusPeminjaman: form.StatusPeminjaman,
+        peminjam: form.peminjam.trim(),
+        tanggal_pinjam: form.tanggal_pinjam,
+        tanggal_kembali: form.tanggal_kembali,
         catatan: form.catatan || null,
       };
 
@@ -67,12 +63,10 @@ export default function DipinjamModal({
 
       // Reset form
       setForm({
-        TglPinjam: today,
-        TglKembali: nextWeek,
+        tanggal_pinjam: today,
+        tanggal_kembali: nextWeek,
         lokasi_id: null,
-        Peminjam: "",
-        jumlah_dipinjam: 1,
-        StatusPeminjaman: "borrowed",
+        peminjam: "",
         catatan: "",
       });
 
@@ -124,9 +118,9 @@ export default function DipinjamModal({
               </label>
               <input
                 type="text"
-                value={form.Peminjam}
+                value={form.peminjam}
                 onChange={(e) =>
-                  setForm((prev) => ({ ...prev, Peminjam: e.target.value }))
+                  setForm((prev) => ({ ...prev, peminjam: e.target.value }))
                 }
                 disabled={loading}
                 required
@@ -143,9 +137,12 @@ export default function DipinjamModal({
                 </label>
                 <input
                   type="date"
-                  value={form.TglPinjam}
+                  value={form.tanggal_pinjam}
                   onChange={(e) =>
-                    setForm((prev) => ({ ...prev, TglPinjam: e.target.value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      tanggal_pinjam: e.target.value,
+                    }))
                   }
                   disabled={loading}
                   required
@@ -158,16 +155,16 @@ export default function DipinjamModal({
                 </label>
                 <input
                   type="date"
-                  value={form.TglKembali}
+                  value={form.tanggal_kembali}
                   onChange={(e) =>
                     setForm((prev) => ({
                       ...prev,
-                      TglKembali: e.target.value,
+                      tanggal_kembali: e.target.value,
                     }))
                   }
                   disabled={loading}
                   required
-                  min={form.TglPinjam}
+                  min={form.tanggal_pinjam}
                   className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
                 />
               </div>
@@ -178,51 +175,9 @@ export default function DipinjamModal({
               asetId={asetId}
               selectedLokasiId={form.lokasi_id}
               onSelect={(id) => setForm((prev) => ({ ...prev, lokasi_id: id }))}
-              jumlahDiperlukan={parseInt(form.jumlah_dipinjam) || 1}
+              jumlahDiperlukan={1}
               disabled={loading}
             />
-
-            {/* Jumlah Dipinjam */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Jumlah Dipinjam <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={form.jumlah_dipinjam}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    jumlah_dipinjam: e.target.value,
-                  }))
-                }
-                disabled={loading}
-                required
-                className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
-              />
-            </div>
-
-            {/* Status Peminjaman */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                value={form.StatusPeminjaman}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    StatusPeminjaman: e.target.value,
-                  }))
-                }
-                disabled={loading}
-                className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
-              >
-                <option value="borrowed">Dipinjam</option>
-                <option value="returned">Dikembalikan</option>
-              </select>
-            </div>
 
             {/* Catatan */}
             <div>
@@ -246,10 +201,10 @@ export default function DipinjamModal({
               onClick={() => setConfirmSubmit(true)}
               disabled={
                 loading ||
-                !form.TglPinjam ||
-                !form.TglKembali ||
+                !form.tanggal_pinjam ||
+                !form.tanggal_kembali ||
                 !form.lokasi_id ||
-                !form.Peminjam?.trim()
+                !form.peminjam?.trim()
               }
               className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
             >
@@ -263,7 +218,7 @@ export default function DipinjamModal({
         <Confirm
           open={confirmSubmit}
           title="Konfirmasi Peminjaman"
-          message={`Yakin ingin mencatat peminjaman ${form.jumlah_dipinjam} unit aset oleh ${form.Peminjam}? Stok akan dikurangi dari lokasi yang dipilih.`}
+          message={`Yakin ingin mencatat peminjaman aset oleh ${form.peminjam}?`}
           onClose={() => setConfirmSubmit(false)}
           onConfirm={handleSubmit}
           confirmLabel="Ya, Catat Peminjaman"
