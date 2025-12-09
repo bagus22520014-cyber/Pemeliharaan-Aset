@@ -13,6 +13,7 @@ export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
     deskripsi: "",
     biaya: "",
     teknisi: "",
+    PurchaseOrder: "",
   });
   const [confirm, setConfirm] = useState({ open: false, id: null });
   const [error, setError] = useState(null);
@@ -49,6 +50,7 @@ export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
         deskripsi: "",
         biaya: "",
         teknisi: "",
+        PurchaseOrder: "",
       });
       onChange?.(created);
     } catch (err) {
@@ -110,6 +112,7 @@ export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
                     <th className="p-2">Tanggal</th>
                     <th className="p-2">Deskripsi</th>
                     <th className="p-2">Teknisi</th>
+                    <th className="p-2">PO</th>
                     <th className="p-2">Biaya</th>
                     <th className="p-2">Actions</th>
                   </tr>
@@ -122,6 +125,7 @@ export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
                       </td>
                       <td className="p-2">{r.deskripsi || "-"}</td>
                       <td className="p-2">{r.teknisi || "-"}</td>
+                      <td className="p-2">{r.PurchaseOrder || "-"}</td>
                       <td className="p-2">
                         {r.biaya ? formatRupiah(r.biaya) : "-"}
                       </td>
@@ -198,6 +202,24 @@ export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
                 value={form.teknisi}
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, teknisi: e.target.value }))
+                }
+                disabled={loading}
+                className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Purchase Order
+              </label>
+              <input
+                placeholder="Masukkan nomor PO"
+                value={form.PurchaseOrder}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    PurchaseOrder: e.target.value,
+                  }))
                 }
                 disabled={loading}
                 className="w-full p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"

@@ -247,7 +247,7 @@ export default function MutasiModal({
                     }
                     className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-300"
                   >
-                    <option value="">-- Pilih Departemen Tujuan --</option>
+                    <option value="">Pilih Departemen Tujuan</option>
                     {departemenList.map((dept) => (
                       <option key={dept.id} value={dept.id}>
                         {dept.nama} ({dept.kode})

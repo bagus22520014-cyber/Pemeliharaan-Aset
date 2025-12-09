@@ -22,7 +22,7 @@ import {
 import { getCurrentDate } from "@/utils/format";
 
 export function useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat) {
-  const [activeSubTab, setActiveSubTab] = useState("perbaikan");
+  const [activeSubTab, setActiveSubTab] = useState("mutasi");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -34,6 +34,7 @@ export function useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat) {
     deskripsi: "",
     biaya: "",
     teknisi: "",
+    PurchaseOrder: "",
   });
 
   // Rusak state

@@ -16,11 +16,21 @@ export const useRiwayatHelpers = () => {
       dijual_input: "Dijual",
       dijual_edit: "Dijual - Edit",
       dijual_delete: "Dijual - Hapus",
+      mutasi_input: "Mutasi",
+      mutasi_edit: "Mutasi - Edit",
+      mutasi_delete: "Mutasi - Hapus",
     };
     return labels[jenisAksi] || jenisAksi;
   };
 
   const getAksiColor = (jenisAksi) => {
+    // Check for mutasi first with includes
+    if (jenisAksi?.includes("mutasi")) {
+      if (jenisAksi?.includes("delete"))
+        return "bg-red-100 text-red-700 border-red-300";
+      return "bg-blue-100 text-blue-700 border-blue-300";
+    }
+
     const colors = {
       input: "bg-green-100 text-green-700 border-green-300",
       edit: "bg-blue-100 text-blue-700 border-blue-300",
@@ -37,6 +47,9 @@ export const useRiwayatHelpers = () => {
       dijual_input: "bg-gray-100 text-gray-700 border-gray-300",
       dijual_edit: "bg-gray-100 text-gray-700 border-gray-300",
       dijual_delete: "bg-red-100 text-red-700 border-red-300",
+      mutasi_input: "bg-blue-100 text-blue-700 border-blue-300",
+      mutasi_edit: "bg-blue-100 text-blue-700 border-blue-300",
+      mutasi_delete: "bg-red-100 text-red-700 border-red-300",
     };
     return colors[jenisAksi] || "bg-gray-100 text-gray-700 border-gray-300";
   };
@@ -46,6 +59,7 @@ export const useRiwayatHelpers = () => {
     if (jenisAksi?.includes("rusak")) return "bg-red-500";
     if (jenisAksi?.includes("dipinjam")) return "bg-indigo-600";
     if (jenisAksi?.includes("dijual")) return "bg-gray-500";
+    if (jenisAksi?.includes("mutasi")) return "bg-blue-500";
     if (jenisAksi?.includes("delete")) return "bg-red-500";
     if (jenisAksi?.includes("edit")) return "bg-blue-500";
     if (jenisAksi?.includes("input")) return "bg-green-500";

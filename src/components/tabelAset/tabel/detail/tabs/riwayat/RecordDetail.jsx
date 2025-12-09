@@ -1,5 +1,19 @@
 import React from "react";
 import { formatRupiah } from "@/utils/format";
+import {
+  FiTool,
+  FiAlertCircle,
+  FiUser,
+  FiShoppingCart,
+  FiTruck,
+  FiCalendar,
+  FiFileText,
+  FiDollarSign,
+  FiCheckCircle,
+  FiInfo,
+  FiMapPin,
+  FiArrowRight,
+} from "react-icons/fi";
 
 export function RecordDetail({ item, recordDetails }) {
   const tabelRef = item.tabelRef || item.tabel_ref;
@@ -9,8 +23,13 @@ export function RecordDetail({ item, recordDetails }) {
 
   if (!detail) {
     return (
-      <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500 italic">
-        Detail tidak tersedia (loading atau tidak ditemukan)
+      <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+        <div className="flex items-center gap-2 text-slate-500">
+          <FiInfo className="w-4 h-4" />
+          <span className="text-sm italic">
+            Detail tidak tersedia (loading atau tidak ditemukan)
+          </span>
+        </div>
       </div>
     );
   }
@@ -24,253 +43,291 @@ export function RecordDetail({ item, recordDetails }) {
     return dateStr;
   };
 
+  const DetailRow = ({ icon: Icon, label, value, valueClass = "" }) => (
+    <div className="flex items-start gap-3 py-2">
+      <div className="mt-0.5">
+        <Icon className="w-4 h-4 text-slate-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-medium text-slate-500 mb-0.5">{label}</div>
+        <div className={`text-sm text-slate-900 break-words ${valueClass}`}>
+          {value}
+        </div>
+      </div>
+    </div>
+  );
+
+  const MutationRow = ({ icon: Icon, label, from, to }) => (
+    <div className="flex items-start gap-3 py-2">
+      <div className="mt-0.5">
+        <Icon className="w-4 h-4 text-slate-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-medium text-slate-500 mb-1">{label}</div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm text-slate-900 bg-slate-100 px-3 py-1 rounded-lg">
+            {from || "-"}
+          </span>
+          <FiArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+          <span className="text-sm text-blue-700 bg-blue-100 px-3 py-1 rounded-lg font-medium">
+            {to || "-"}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+
   switch (tabelRef) {
     case "perbaikan":
       return (
-        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm space-y-1">
-          <div className="flex gap-2">
-            <span className="font-semibold text-gray-700 min-w-[120px]">
-              Tanggal:
-            </span>
-            <span className="text-gray-900">
-              {formatDate(detail.tanggal || detail.tanggal_perbaikan)}
+        <div className="mt-4 p-5 bg-amber-50 border border-amber-200 rounded-xl space-y-1">
+          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-amber-200">
+            <div className="bg-amber-100 p-1.5 rounded-lg">
+              <FiTool className="w-4 h-4 text-amber-600" />
+            </div>
+            <span className="text-sm font-semibold text-amber-900">
+              Detail Perbaikan
             </span>
           </div>
+
+          <DetailRow
+            icon={FiCalendar}
+            label="Tanggal"
+            value={formatDate(detail.tanggal || detail.tanggal_perbaikan)}
+          />
+
           {detail.deskripsi && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Deskripsi:
-              </span>
-              <span className="text-gray-900">{detail.deskripsi}</span>
-            </div>
+            <DetailRow
+              icon={FiFileText}
+              label="Deskripsi"
+              value={detail.deskripsi}
+            />
           )}
+
           {detail.teknisi && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Teknisi:
-              </span>
-              <span className="text-gray-900">{detail.teknisi}</span>
-            </div>
+            <DetailRow icon={FiUser} label="Vendor" value={detail.teknisi} />
           )}
+
+          {detail.PurchaseOrder && (
+            <DetailRow
+              icon={FiFileText}
+              label="Purchase Order"
+              value={detail.PurchaseOrder}
+              valueClass="font-mono text-xs"
+            />
+          )}
+
           {detail.biaya != null && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Biaya:
-              </span>
-              <span className="text-gray-900 font-semibold">
-                {formatRupiah(detail.biaya)}
-              </span>
-            </div>
+            <DetailRow
+              icon={FiDollarSign}
+              label="Biaya"
+              value={formatRupiah(detail.biaya)}
+              valueClass="font-semibold text-amber-700"
+            />
           )}
+
           {detail.status && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Status:
-              </span>
-              <span className="text-gray-900 capitalize">{detail.status}</span>
-            </div>
+            <DetailRow
+              icon={FiCheckCircle}
+              label="Status"
+              value={<span className="capitalize">{detail.status}</span>}
+            />
           )}
         </div>
       );
 
     case "rusak":
       return (
-        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm space-y-1">
-          <div className="flex gap-2">
-            <span className="font-semibold text-gray-700 min-w-[120px]">
-              Tanggal:
-            </span>
-            <span className="text-gray-900">
-              {formatDate(detail.tanggal || detail.TglRusak)}
+        <div className="mt-4 p-5 bg-red-50 border border-red-200 rounded-xl space-y-1">
+          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-red-200">
+            <div className="bg-red-100 p-1.5 rounded-lg">
+              <FiAlertCircle className="w-4 h-4 text-red-600" />
+            </div>
+            <span className="text-sm font-semibold text-red-900">
+              Detail Kerusakan
             </span>
           </div>
+
+          <DetailRow
+            icon={FiCalendar}
+            label="Tanggal"
+            value={formatDate(detail.tanggal || detail.TglRusak)}
+          />
+
           {(detail.keterangan || detail.Kerusakan) && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Keterangan:
-              </span>
-              <span className="text-gray-900">
-                {detail.keterangan || detail.Kerusakan}
-              </span>
-            </div>
+            <DetailRow
+              icon={FiFileText}
+              label="Keterangan"
+              value={detail.keterangan || detail.Kerusakan}
+            />
           )}
+
           {(detail.StatusRusak || detail.statusRusak) && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Status Kerusakan:
-              </span>
-              <span className="text-gray-900 capitalize">
-                {detail.StatusRusak || detail.statusRusak}
-              </span>
-            </div>
+            <DetailRow
+              icon={FiCheckCircle}
+              label="Status Kerusakan"
+              value={
+                <span className="capitalize">
+                  {detail.StatusRusak || detail.statusRusak}
+                </span>
+              }
+            />
           )}
+
           {detail.estimasi_biaya != null && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Estimasi Biaya:
-              </span>
-              <span className="text-gray-900 font-semibold">
-                {formatRupiah(detail.estimasi_biaya)}
-              </span>
-            </div>
+            <DetailRow
+              icon={FiDollarSign}
+              label="Estimasi Biaya"
+              value={formatRupiah(detail.estimasi_biaya)}
+              valueClass="font-semibold text-red-700"
+            />
           )}
+
           {detail.catatan && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Catatan:
-              </span>
-              <span className="text-gray-900">{detail.catatan}</span>
-            </div>
+            <DetailRow icon={FiInfo} label="Catatan" value={detail.catatan} />
           )}
         </div>
       );
 
     case "dipinjam":
       return (
-        <div className="mt-3 p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-sm space-y-1">
-          <div className="flex gap-2">
-            <span className="font-semibold text-gray-700 min-w-[120px]">
-              Tanggal Pinjam:
-            </span>
-            <span className="text-gray-900">
-              {formatDate(detail.tanggal_pinjam || detail.TglPinjam)}
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <span className="font-semibold text-gray-700 min-w-[120px]">
-              Tanggal Kembali:
-            </span>
-            <span className="text-gray-900">
-              {formatDate(detail.tanggal_kembali || detail.TglKembali) || "-"}
+        <div className="mt-4 p-5 bg-indigo-50 border border-indigo-200 rounded-xl space-y-1">
+          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-indigo-200">
+            <div className="bg-indigo-100 p-1.5 rounded-lg">
+              <FiUser className="w-4 h-4 text-indigo-600" />
+            </div>
+            <span className="text-sm font-semibold text-indigo-900">
+              Detail Peminjaman
             </span>
           </div>
+
+          <DetailRow
+            icon={FiCalendar}
+            label="Tanggal Pinjam"
+            value={formatDate(detail.tanggal_pinjam || detail.TglPinjam)}
+          />
+
+          <DetailRow
+            icon={FiCalendar}
+            label="Tanggal Kembali"
+            value={
+              formatDate(detail.tanggal_kembali || detail.TglKembali) || "-"
+            }
+          />
+
           {(detail.peminjam || detail.Peminjam) && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Peminjam:
-              </span>
-              <span className="text-gray-900">
-                {detail.peminjam || detail.Peminjam}
-              </span>
-            </div>
+            <DetailRow
+              icon={FiUser}
+              label="Peminjam"
+              value={detail.peminjam || detail.Peminjam}
+            />
           )}
+
           {detail.keperluan && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Keperluan:
-              </span>
-              <span className="text-gray-900">
-                {detail.keperluan || detail.Keperluan}
-              </span>
-            </div>
+            <DetailRow
+              icon={FiFileText}
+              label="Keperluan"
+              value={detail.keperluan || detail.Keperluan}
+            />
           )}
+
           {(detail.status || detail.Status) && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Status:
-              </span>
-              <span className="text-gray-900 capitalize">
-                {detail.status || detail.Status}
-              </span>
-            </div>
+            <DetailRow
+              icon={FiCheckCircle}
+              label="Status"
+              value={
+                <span className="capitalize">
+                  {detail.status || detail.Status}
+                </span>
+              }
+            />
           )}
         </div>
       );
 
     case "dijual":
       return (
-        <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm space-y-1">
-          <div className="flex gap-2">
-            <span className="font-semibold text-gray-700 min-w-[120px]">
-              Tanggal Jual:
-            </span>
-            <span className="text-gray-900">
-              {formatDate(detail.tanggal_jual || detail.TglDijual)}
+        <div className="mt-4 p-5 bg-slate-50 border border-slate-300 rounded-xl space-y-1">
+          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-300">
+            <div className="bg-slate-200 p-1.5 rounded-lg">
+              <FiShoppingCart className="w-4 h-4 text-slate-700" />
+            </div>
+            <span className="text-sm font-semibold text-slate-900">
+              Detail Penjualan
             </span>
           </div>
+
+          <DetailRow
+            icon={FiCalendar}
+            label="Tanggal Jual"
+            value={formatDate(detail.tanggal_jual || detail.TglDijual)}
+          />
+
           {(detail.pembeli || detail.Pembeli) && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Pembeli:
-              </span>
-              <span className="text-gray-900">
-                {detail.pembeli || detail.Pembeli}
-              </span>
-            </div>
+            <DetailRow
+              icon={FiUser}
+              label="Pembeli"
+              value={detail.pembeli || detail.Pembeli}
+            />
           )}
+
           {(detail.harga_jual != null || detail.HargaJual != null) && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Harga Jual:
-              </span>
-              <span className="text-gray-900 font-semibold">
-                {formatRupiah(detail.harga_jual || detail.HargaJual)}
-              </span>
-            </div>
+            <DetailRow
+              icon={FiDollarSign}
+              label="Harga Jual"
+              value={formatRupiah(detail.harga_jual || detail.HargaJual)}
+              valueClass="font-semibold text-slate-700"
+            />
           )}
+
           {(detail.catatan || detail.alasan || detail.Alasan) && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Catatan:
-              </span>
-              <span className="text-gray-900">
-                {detail.catatan || detail.alasan || detail.Alasan}
-              </span>
-            </div>
+            <DetailRow
+              icon={FiInfo}
+              label="Catatan"
+              value={detail.catatan || detail.alasan || detail.Alasan}
+            />
           )}
         </div>
       );
 
     case "mutasi":
       return (
-        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm space-y-1">
-          <div className="flex gap-2">
-            <span className="font-semibold text-gray-700 min-w-[120px]">
-              Tanggal Mutasi:
-            </span>
-            <span className="text-gray-900">
-              {formatDate(detail.TglMutasi)}
+        <div className="mt-4 p-5 bg-blue-50 border border-blue-200 rounded-xl space-y-1">
+          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-blue-200">
+            <div className="bg-blue-100 p-1.5 rounded-lg">
+              <FiTruck className="w-4 h-4 text-blue-600" />
+            </div>
+            <span className="text-sm font-semibold text-blue-900">
+              Detail Mutasi
             </span>
           </div>
-          {(detail.departemen_asal_nama || detail.ruangan_asal) && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Dari:
-              </span>
-              <span className="text-gray-900">
-                {[detail.departemen_asal_nama, detail.ruangan_asal]
-                  .filter(Boolean)
-                  .join(" - ") || "-"}
-              </span>
-            </div>
-          )}
-          {(detail.departemen_tujuan_nama || detail.ruangan_tujuan) && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Ke:
-              </span>
-              <span className="text-gray-900">
-                {[detail.departemen_tujuan_nama, detail.ruangan_tujuan]
-                  .filter(Boolean)
-                  .join(" - ") || "-"}
-              </span>
-            </div>
-          )}
+
+          <DetailRow
+            icon={FiCalendar}
+            label="Tanggal Mutasi"
+            value={formatDate(detail.TglMutasi)}
+          />
+
+          <MutationRow
+            icon={FiMapPin}
+            label="Departemen"
+            from={detail.departemen_asal_nama}
+            to={detail.departemen_tujuan_nama}
+          />
+
+          <MutationRow
+            icon={FiMapPin}
+            label="Lokasi"
+            from={detail.ruangan_asal}
+            to={detail.ruangan_tujuan}
+          />
+
           {detail.alasan && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Alasan:
-              </span>
-              <span className="text-gray-900">{detail.alasan}</span>
-            </div>
+            <DetailRow icon={FiFileText} label="Alasan" value={detail.alasan} />
           )}
+
           {detail.catatan && (
-            <div className="flex gap-2">
-              <span className="font-semibold text-gray-700 min-w-[120px]">
-                Catatan:
-              </span>
-              <span className="text-gray-900">{detail.catatan}</span>
-            </div>
+            <DetailRow icon={FiInfo} label="Catatan" value={detail.catatan} />
           )}
         </div>
       );

@@ -44,14 +44,54 @@ export default function TabAksi({
     handleDelete,
   } = useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat);
 
+  const tabColors = {
+    mutasi: "bg-blue-500",
+    perbaikan: "bg-yellow-500",
+    rusak: "bg-red-500",
+    dipinjam: "bg-indigo-600",
+    dijual: "bg-gray-500",
+  };
+
   return (
     <div
-      className="bg-gray-100 rounded-2xl shadow-2xl border border-gray-300 overflow-hidden"
+      className="bg-gray-100 rounded-2xl shadow-2xl border border-gray-300 overflow-hidden relative flex"
       style={{ width: "1388px", height: "692px" }}
     >
-      {/* Header - Sticky */}
-      <div className="sticky top-0 z-10 bg-gray-100 px-6 pt-6 pb-4 border-b border-gray-300">
-        <div className="flex items-center justify-between mb-4">
+      {/* Sidebar Tabs - Vertical */}
+      <div className="w-48 bg-white border-r border-gray-300 flex flex-col">
+        {/* Header */}
+        <div className="p-4 border-b border-gray-300">
+          <h3 className="font-semibold text-gray-700 text-sm">Tab Aksi</h3>
+        </div>
+
+        {/* Tab Buttons */}
+        <div className="flex flex-col p-2 space-y-1">
+          {[
+            { key: "mutasi", label: "Mutasi" },
+            { key: "perbaikan", label: "Perbaikan" },
+            { key: "rusak", label: "Kerusakan" },
+            { key: "dipinjam", label: "Peminjaman" },
+            { key: "dijual", label: "Penjualan" },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveSubTab(tab.key)}
+              className={`px-4 py-2.5 rounded-lg font-medium transition text-left ${
+                activeSubTab === tab.key
+                  ? `${tabColors[tab.key]} text-white shadow`
+                  : "bg-gray-50 text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="bg-gray-100 px-6 py-4 border-b border-gray-300 flex items-center justify-between">
           <h2 className="text-xl font-semibold tracking-wide">
             Aksi Aset: {asetId}
           </h2>
@@ -64,122 +104,96 @@ export default function TabAksi({
           </button>
         </div>
 
-        {/* Sub Tabs */}
-        <div className="flex gap-2">
-          {[
-            { key: "perbaikan", label: "Perbaikan" },
-            { key: "rusak", label: "Kerusakan" },
-            { key: "dipinjam", label: "Peminjaman" },
-            { key: "dijual", label: "Penjualan" },
-            { key: "mutasi", label: "Mutasi" },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveSubTab(tab.key)}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                activeSubTab === tab.key
-                  ? "bg-indigo-600 text-white shadow"
-                  : "bg-white text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* Content */}
+        <div className="p-6 overflow-auto flex-1">
+          {/* Messages */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-300 text-red-700 rounded-lg">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-300 text-green-700 rounded-lg">
+              {success}
+            </div>
+          )}
+
+          {/* Perbaikan Tab */}
+          {activeSubTab === "perbaikan" && (
+            <PerbaikanTab
+              asetId={asetId}
+              form={repairForm}
+              setForm={setRepairForm}
+              repairs={repairs}
+              loading={loading}
+              onCreateRequest={() => handleCreateRequest("perbaikan")}
+              onDelete={(id) =>
+                setConfirmDelete({ open: true, id, type: "perbaikan" })
+              }
+            />
+          )}
+
+          {/* Rusak Tab */}
+          {activeSubTab === "rusak" && (
+            <RusakTab
+              asetId={asetId}
+              form={damageForm}
+              setForm={setDamageForm}
+              damages={damages}
+              loading={loading}
+              onCreateRequest={() => handleCreateRequest("rusak")}
+              onDelete={(id) =>
+                setConfirmDelete({ open: true, id, type: "rusak" })
+              }
+            />
+          )}
+
+          {/* Dipinjam Tab */}
+          {activeSubTab === "dipinjam" && (
+            <DipinjamTab
+              asetId={asetId}
+              form={borrowForm}
+              setForm={setBorrowForm}
+              borrows={borrows}
+              loading={loading}
+              onCreateRequest={() => handleCreateRequest("dipinjam")}
+              onDelete={(id) =>
+                setConfirmDelete({ open: true, id, type: "dipinjam" })
+              }
+            />
+          )}
+
+          {/* Dijual Tab */}
+          {activeSubTab === "dijual" && (
+            <DijualTab
+              asetId={asetId}
+              form={saleForm}
+              setForm={setSaleForm}
+              sales={sales}
+              loading={loading}
+              onCreateRequest={() => handleCreateRequest("dijual")}
+              onDelete={(id) =>
+                setConfirmDelete({ open: true, id, type: "dijual" })
+              }
+            />
+          )}
+
+          {/* Mutasi Tab */}
+          {activeSubTab === "mutasi" && (
+            <MutasiTab
+              asetId={asetId}
+              asset={asset}
+              form={mutationForm}
+              setForm={setMutationForm}
+              mutations={mutations}
+              loading={loading}
+              onCreateRequest={() => handleCreateRequest("mutasi")}
+              onDelete={(id) =>
+                setConfirmDelete({ open: true, id, type: "mutasi" })
+              }
+            />
+          )}
         </div>
-      </div>
-
-      {/* Content */}
-      <div
-        className="p-6 overflow-auto"
-        style={{ height: "calc(692px - 140px)" }}
-      >
-        {/* Messages */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-300 text-red-700 rounded-lg">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-300 text-green-700 rounded-lg">
-            {success}
-          </div>
-        )}
-
-        {/* Perbaikan Tab */}
-        {activeSubTab === "perbaikan" && (
-          <PerbaikanTab
-            asetId={asetId}
-            form={repairForm}
-            setForm={setRepairForm}
-            repairs={repairs}
-            loading={loading}
-            onCreateRequest={() => handleCreateRequest("perbaikan")}
-            onDelete={(id) =>
-              setConfirmDelete({ open: true, id, type: "perbaikan" })
-            }
-          />
-        )}
-
-        {/* Rusak Tab */}
-        {activeSubTab === "rusak" && (
-          <RusakTab
-            asetId={asetId}
-            form={damageForm}
-            setForm={setDamageForm}
-            damages={damages}
-            loading={loading}
-            onCreateRequest={() => handleCreateRequest("rusak")}
-            onDelete={(id) =>
-              setConfirmDelete({ open: true, id, type: "rusak" })
-            }
-          />
-        )}
-
-        {/* Dipinjam Tab */}
-        {activeSubTab === "dipinjam" && (
-          <DipinjamTab
-            asetId={asetId}
-            form={borrowForm}
-            setForm={setBorrowForm}
-            borrows={borrows}
-            loading={loading}
-            onCreateRequest={() => handleCreateRequest("dipinjam")}
-            onDelete={(id) =>
-              setConfirmDelete({ open: true, id, type: "dipinjam" })
-            }
-          />
-        )}
-
-        {/* Dijual Tab */}
-        {activeSubTab === "dijual" && (
-          <DijualTab
-            asetId={asetId}
-            form={saleForm}
-            setForm={setSaleForm}
-            sales={sales}
-            loading={loading}
-            onCreateRequest={() => handleCreateRequest("dijual")}
-            onDelete={(id) =>
-              setConfirmDelete({ open: true, id, type: "dijual" })
-            }
-          />
-        )}
-
-        {/* Mutasi Tab */}
-        {activeSubTab === "mutasi" && (
-          <MutasiTab
-            asetId={asetId}
-            asset={asset}
-            form={mutationForm}
-            setForm={setMutationForm}
-            mutations={mutations}
-            loading={loading}
-            onCreateRequest={() => handleCreateRequest("mutasi")}
-            onDelete={(id) =>
-              setConfirmDelete({ open: true, id, type: "mutasi" })
-            }
-          />
-        )}
       </div>
 
       {/* Confirm Create Dialog */}

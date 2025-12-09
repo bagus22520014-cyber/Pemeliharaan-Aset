@@ -11,6 +11,8 @@ export default function TabRiwayat({ asetId, onClose }) {
   const [error, setError] = useState(null);
   const [recordDetails, setRecordDetails] = useState({});
   const [groupedHistory, setGroupedHistory] = useState({});
+  const [activeYear, setActiveYear] = useState(null);
+  const [activeMonth, setActiveMonth] = useState(null);
 
   const {
     getAksiLabel,
@@ -132,74 +134,138 @@ export default function TabRiwayat({ asetId, onClose }) {
     return <RecordDetail item={item} recordDetails={recordDetails} />;
   };
 
+  const scrollToSection = (year, month) => {
+    const elementId =
+      month !== null ? `month-${year}-${month}` : `year-${year}`;
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      setActiveYear(year);
+      setActiveMonth(month);
+    }
+  };
+
   return (
     <div
-      className="bg-gray-100 rounded-2xl shadow-2xl border border-gray-300 overflow-hidden"
+      className="bg-gray-100 rounded-2xl shadow-2xl border border-gray-300 overflow-hidden flex"
       style={{ width: "1388px", height: "692px" }}
     >
-      {/* Header - Sticky */}
-      <div className="sticky top-0 z-10 bg-gray-100 px-6 pt-6 pb-4 border-b border-gray-300 flex items-center justify-between">
-        <h2 className="text-xl font-semibold tracking-wide">Riwayat Aset</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-6 py-2.5 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold transition"
-        >
-          Tutup
-        </button>
-      </div>
+      {/* Sidebar Navigation - Vertical */}
+      {!loading && !error && history.length > 0 && (
+        <div className="w-48 bg-white border-r border-gray-300 flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="p-4 border-b border-gray-300 bg-gray-50">
+            <h3 className="font-semibold text-gray-700 text-sm">Navigasi</h3>
+          </div>
 
-      {/* Content */}
-      <div
-        className="p-6 overflow-auto"
-        style={{ height: "calc(692px - 76px)" }}
-      >
-        <div className="space-y-4">
-          {loading && (
-            <div className="text-center py-12 text-gray-600">
-              <p className="text-lg">Memuat riwayat...</p>
+          {/* Navigation Items */}
+          <div className="flex-1 overflow-y-auto p-2">
+            <div className="space-y-1">
+              {Object.keys(groupedHistory)
+                .sort((a, b) => b - a)
+                .map((year) => (
+                  <div key={year} className="space-y-0.5">
+                    {/* Year Button */}
+                    <button
+                      onClick={() => scrollToSection(year, null)}
+                      className={`w-full text-left px-3 py-2 rounded-lg font-bold text-sm transition ${
+                        activeYear === year && activeMonth === null
+                          ? "bg-indigo-600 text-white shadow"
+                          : "bg-gray-50 text-gray-800 hover:bg-gray-100"
+                      }`}
+                    >
+                      {year}
+                    </button>
+
+                    {/* Month Buttons */}
+                    <div className="ml-2 space-y-0.5">
+                      {Object.keys(groupedHistory[year])
+                        .sort((a, b) => b - a)
+                        .map((month) => (
+                          <button
+                            key={month}
+                            onClick={() => scrollToSection(year, month)}
+                            className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition ${
+                              activeYear === year && activeMonth === month
+                                ? "bg-blue-100 text-blue-700 font-semibold"
+                                : "text-gray-600 hover:bg-gray-100"
+                            }`}
+                          >
+                            {getMonthName(parseInt(month))}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                ))}
             </div>
-          )}
+          </div>
+        </div>
+      )}
 
-          {error && (
-            <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-lg">
-              <p className="font-semibold">Error</p>
-              <p className="text-sm">{error}</p>
-            </div>
-          )}
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Header - Sticky */}
+        <div className="bg-gray-100 px-6 py-4 border-b border-gray-300 flex items-center justify-between">
+          <h2 className="text-xl font-semibold tracking-wide">Riwayat Aset</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-2.5 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold transition"
+          >
+            Tutup
+          </button>
+        </div>
 
-          {!loading && !error && history.length === 0 && (
-            <div className="text-center py-12 text-gray-600">
-              <p className="text-lg">Belum ada riwayat untuk aset ini</p>
-            </div>
-          )}
-
-          {!loading && !error && history.length > 0 && (
-            <div className="relative">
-              {/* Timeline line */}
-              <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-linear-to-b from-indigo-300 via-purple-300 to-pink-300"></div>
-
-              {/* Timeline items grouped by year and month */}
-              <div className="space-y-6">
-                {Object.keys(groupedHistory)
-                  .sort((a, b) => b - a)
-                  .map((year) => (
-                    <YearSection
-                      key={year}
-                      year={year}
-                      months={groupedHistory[year]}
-                      getMonthName={getMonthName}
-                      getIconColor={getIconColor}
-                      getAksiColor={getAksiColor}
-                      getAksiLabel={getAksiLabel}
-                      formatDate={formatDate}
-                      renderRecordDetail={renderRecordDetail}
-                      renderPerubahan={renderPerubahan}
-                    />
-                  ))}
+        {/* Content */}
+        <div className="p-6 overflow-auto flex-1">
+          <div className="space-y-4">
+            {loading && (
+              <div className="text-center py-12 text-gray-600">
+                <p className="text-lg">Memuat riwayat...</p>
               </div>
-            </div>
-          )}
+            )}
+
+            {error && (
+              <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-lg">
+                <p className="font-semibold">Error</p>
+                <p className="text-sm">{error}</p>
+              </div>
+            )}
+
+            {!loading && !error && history.length === 0 && (
+              <div className="text-center py-12 text-gray-600">
+                <p className="text-lg">Belum ada riwayat untuk aset ini</p>
+              </div>
+            )}
+
+            {!loading && !error && history.length > 0 && (
+              <div className="relative">
+                {/* Timeline line */}
+                <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-linear-to-b from-indigo-300 via-purple-300 to-pink-300"></div>
+
+                {/* Timeline items grouped by year and month */}
+                <div className="space-y-6">
+                  {Object.keys(groupedHistory)
+                    .sort((a, b) => b - a)
+                    .map((year) => (
+                      <div key={year} id={`year-${year}`}>
+                        <YearSection
+                          year={year}
+                          months={groupedHistory[year]}
+                          getMonthName={getMonthName}
+                          getIconColor={getIconColor}
+                          getAksiColor={getAksiColor}
+                          getAksiLabel={getAksiLabel}
+                          formatDate={formatDate}
+                          renderRecordDetail={renderRecordDetail}
+                          renderPerubahan={renderPerubahan}
+                        />
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

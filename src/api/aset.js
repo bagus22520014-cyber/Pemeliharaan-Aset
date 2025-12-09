@@ -375,6 +375,7 @@ export async function createPerbaikan(asetId, payload) {
     deskripsi: payload.deskripsi || null,
     biaya: payload.biaya || null,
     teknisi: payload.teknisi || null,
+    PurchaseOrder: payload.PurchaseOrder || null,
   });
 
   const res = await fetch(`/perbaikan`, {
