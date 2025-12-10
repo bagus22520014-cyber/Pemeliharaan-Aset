@@ -6,18 +6,23 @@ import {
   GROUPS,
   AKUN,
   STATUSES,
-} from "@/utils/format";
-import Alert from "@/components/Alert";
-import { FaPlus } from "react-icons/fa";
-import Navbar from "@/components/Navbar";
-import Confirm from "@/components/Confirm";
-import CreateAsset from "@/components/tabelAset/addAset/CreateAsset";
-import AssetDetail from "@/components/tabelAset/tabel/detail/AssetDetail";
-import { createAset, listAset } from "@/api/aset";
-import { listBeban } from "@/api/beban";
-import { listDepartemen } from "@/api/departemen";
-import SearchFilterBar from "@/components/tabelAset/filter/SearchFilterBar";
-import AssetTable from "@/components/tabelAset/tabel/AssetTable";
+} from "../../utils/format";
+import Alert from "../../components/Alert";
+import {
+  FaPlus,
+  FaBox,
+  FaChartLine,
+  FaTools,
+  FaExclamationTriangle,
+} from "react-icons/fa";
+import Confirm from "../../components/Confirm";
+import CreateAsset from "../../components/tabelAset/addAset/CreateAsset";
+import AssetDetail from "../../components/tabelAset/tabel/detail/AssetDetail";
+import { createAset, listAset } from "../../api/aset";
+import { listBeban } from "../../api/beban";
+import { listDepartemen } from "../../api/departemen";
+import SearchFilterBar from "../../components/tabelAset/filter/SearchFilterBar";
+import AssetTable from "../../components/tabelAset/tabel/AssetTable";
 
 export default function User({ user, sessionUser, onLogout }) {
   const [showCreate, setShowCreate] = useState(false);
@@ -161,7 +166,7 @@ export default function User({ user, sessionUser, onLogout }) {
               "Aset berhasil ditambahkan tetapi tidak dapat upload gambar (ID tidak ditemukan)",
           });
         } else {
-          const { uploadAsetImage } = await import("../api/aset");
+          const { uploadAsetImage } = await import("../../api/aset");
           try {
             const uploadResult = await uploadAsetImage(assetId, pendingFile);
             // Update the created asset with the image info if returned
@@ -393,39 +398,32 @@ export default function User({ user, sessionUser, onLogout }) {
 
   return (
     <>
-      <Navbar
-        title="User dashboard"
-        user={user}
-        onLogout={() => setLogoutConfirm(true)}
-      />
-      {alert && (
-        <div className="mb-4">
-          <Alert
-            type={alert.type}
-            message={alert.message}
-            onClose={() => setAlert(null)}
+      <div className="bg-white p-4">
+        {alert && (
+          <div className="mb-4">
+            <Alert
+              type={alert.type}
+              message={alert.message}
+              onClose={() => setAlert(null)}
+            />
+          </div>
+        )}
+        {logoutConfirm && (
+          <Confirm
+            open={logoutConfirm}
+            title="Logout"
+            message="Yakin ingin keluar?"
+            confirmLabel="Logout"
+            onClose={() => setLogoutConfirm(false)}
+            onConfirm={() => {
+              setLogoutConfirm(false);
+              onLogout?.();
+            }}
           />
-        </div>
-      )}
-      {logoutConfirm && (
-        <Confirm
-          open={logoutConfirm}
-          title="Logout"
-          message="Yakin ingin keluar?"
-          confirmLabel="Logout"
-          onClose={() => setLogoutConfirm(false)}
-          onConfirm={() => {
-            setLogoutConfirm(false);
-            onLogout?.();
-          }}
-        />
-      )}
+        )}
 
-      <div className="bg-white p-6 pt-0">
         <main>
-          {/* Welcome message removed — header / navbar now displays username */}
-
-          <section className="mt-6 relative">
+          <section className="mt-2 relative">
             {showCreate && (
               <div className="mb-6">
                 <CreateAsset
@@ -560,27 +558,103 @@ export default function User({ user, sessionUser, onLogout }) {
                     .map((s) => String(s).toLowerCase());
                   return fields.some((f) => f.includes(q));
                 });
+
                 return (
-                  <AssetTable
-                    assets={filtered}
-                    showActions={false}
-                    loading={loading}
-                    title={`Daftar Aset (Beban: ${
-                      sessionUser?.beban ?? "All"
-                    })`}
-                    ref={tableRef}
-                    resetOnAssetsChange={false}
-                    leftControls={
-                      <button
-                        onClick={() => setShowCreate((s) => !s)}
-                        className="px-3 py-1 rounded-md bg-indigo-600 text-white text-sm flex items-center gap-2 mr-2"
-                      >
-                        <FaPlus className="h-4 w-4" />
-                      </button>
-                    }
-                    onView={(a) => setDetailAsset(a)}
-                    useMaster={false}
-                  />
+                  <>
+                    {/* Stats Cards - Using filtered data */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                      <div className="bg-white rounded-xl p-4 shadow-md border border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-600">Total Aset</p>
+                            <p className="text-2xl font-bold text-gray-800 mt-1">
+                              {filtered.length}
+                            </p>
+                          </div>
+                          <div className="bg-indigo-100 p-2 rounded-lg">
+                            <FaBox className="text-indigo-600 text-xl" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-xl p-4 shadow-md border border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-600">Aset Aktif</p>
+                            <p className="text-2xl font-bold text-green-600 mt-1">
+                              {
+                                filtered.filter((a) => a.statusAset === "aktif")
+                                  .length
+                              }
+                            </p>
+                          </div>
+                          <div className="bg-green-100 p-2 rounded-lg">
+                            <FaChartLine className="text-green-600 text-xl" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-xl p-4 shadow-md border border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-600">
+                              Butuh Perbaikan
+                            </p>
+                            <p className="text-2xl font-bold text-red-600 mt-1">
+                              {
+                                filtered.filter((a) => a.statusAset === "rusak")
+                                  .length
+                              }
+                            </p>
+                          </div>
+                          <div className="bg-red-100 p-2 rounded-lg">
+                            <FaExclamationTriangle className="text-red-600 text-xl" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-xl p-4 shadow-md border border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-600">
+                              Dalam Perbaikan
+                            </p>
+                            <p className="text-2xl font-bold text-yellow-600 mt-1">
+                              {
+                                filtered.filter(
+                                  (a) => a.statusAset === "diperbaiki"
+                                ).length
+                              }
+                            </p>
+                          </div>
+                          <div className="bg-yellow-100 p-2 rounded-lg">
+                            <FaTools className="text-yellow-600 text-xl" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <AssetTable
+                      assets={filtered}
+                      showActions={false}
+                      loading={loading}
+                      title={`Daftar Aset (Beban: ${
+                        sessionUser?.beban ?? "All"
+                      })`}
+                      ref={tableRef}
+                      resetOnAssetsChange={false}
+                      leftControls={
+                        <button
+                          onClick={() => setShowCreate((s) => !s)}
+                          className="px-3 py-1 rounded-md bg-indigo-600 text-white text-sm flex items-center gap-2 mr-2"
+                        >
+                          <FaPlus className="h-4 w-4" />
+                        </button>
+                      }
+                      onView={(a) => setDetailAsset(a)}
+                      useMaster={false}
+                    />
+                  </>
                 );
               })()}
               {detailAsset && (

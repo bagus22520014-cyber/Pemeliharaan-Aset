@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
-import { FaBars, FaChevronDown } from "react-icons/fa";
+import { FaBars, FaChevronDown, FaBell } from "react-icons/fa";
 
 export default function Navbar({
   title = "Pemeliharaan Aset",
+  icon: Icon = null,
   user,
   onLogout,
   leftControls = null,
@@ -30,29 +31,38 @@ export default function Navbar({
     >
       {/* LEFT AREA */}
       <div className="flex items-center gap-4">
-        {/* MOBILE MENU BUTTON */}
-        <button
-          onClick={() => setMobileOpen((s) => !s)}
-          className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition text-gray-700"
-        >
-          <FaBars className="h-5 w-5" />
-        </button>
+        {/* OPTIONAL LEFT CONTROLS (Mobile menu from MainLayout) */}
+        {leftControls}
 
         {/* APP TITLE */}
         <div className="hidden sm:block">
-          <h1 className="text-xl font-semibold tracking-wide text-gray-800">
-            {title}
-          </h1>
+          <div className="flex items-center gap-3">
+            {Icon && (
+              <div className="bg-indigo-100 p-2 rounded-lg">
+                <Icon className="text-indigo-600 text-lg" />
+              </div>
+            )}
+            <h1 className="text-xl font-semibold tracking-wide text-gray-800">
+              {title}
+            </h1>
+          </div>
         </div>
-
-        {/* OPTIONAL LEFT CONTROLS */}
-        <div className="hidden md:flex items-center gap-3">{leftControls}</div>
       </div>
 
       {/* RIGHT AREA */}
       <nav className="flex items-center gap-3">
         {/* OPTIONAL RIGHT CONTROLS */}
         {rightControls}
+
+        {/* NOTIFICATION BELL */}
+        <button
+          className="relative p-2 rounded-lg hover:bg-gray-100 transition text-gray-700"
+          aria-label="Notifications"
+        >
+          <FaBell className="text-lg" />
+          {/* Badge for unread notifications */}
+          <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
+        </button>
 
         {/* USER MENU */}
         <div className="relative" ref={menuRef}>

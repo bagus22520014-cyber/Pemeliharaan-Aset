@@ -86,11 +86,9 @@ function AssetTable(
   return (
     <div className="overflow-auto mt-4 rounded-2xl ring-1 ring-gray-300 bg-white shadow-sm">
       <div className=" h-[55px] px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+        <div className="text-lg font-semibold text-gray-700">{title}</div>
         <div className="flex items-center gap-3">
           {leftControls}
-          <div className="text-lg font-semibold text-gray-700">{title}</div>
-        </div>
-        <div className="flex items-center gap-3">
           {selectedIds.size > 0 && (
             <button
               onClick={() => {

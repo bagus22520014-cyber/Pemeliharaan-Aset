@@ -17,11 +17,32 @@ export default defineConfig({
         target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
+        bypass: (req) => {
+          // Don't proxy React Router route /users
+          if (req.url === "/users") {
+            return req.url;
+          }
+          return null;
+        },
       },
       "/aset": {
         target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
+        bypass: (req) => {
+          const url = req.url;
+          // Don't proxy if it's a React Router route (HTML pages)
+          // Only proxy API calls (should have headers or query params, not just page navigation)
+          if (
+            url === "/aset/daftar" ||
+            url === "/aset/kategori" ||
+            url === "/aset/status"
+          ) {
+            return url; // Return the URL to bypass proxy (serve from Vite)
+          }
+          // Otherwise let it proxy to backend
+          return null;
+        },
       },
       "/perbaikan": {
         target: "http://localhost:4000",

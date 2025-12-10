@@ -50,7 +50,7 @@ export function RecordDetail({ item, recordDetails }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-xs font-medium text-slate-500 mb-0.5">{label}</div>
-        <div className={`text-sm text-slate-900 break-words ${valueClass}`}>
+        <div className={`text-sm text-slate-900 wrap-break-word ${valueClass}`}>
           {value}
         </div>
       </div>
@@ -68,7 +68,7 @@ export function RecordDetail({ item, recordDetails }) {
           <span className="text-sm text-slate-900 bg-slate-100 px-3 py-1 rounded-lg">
             {from || "-"}
           </span>
-          <FiArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+          <FiArrowRight className="w-4 h-4 text-slate-400 flex shrink-0" />
           <span className="text-sm text-blue-700 bg-blue-100 px-3 py-1 rounded-lg font-medium">
             {to || "-"}
           </span>
