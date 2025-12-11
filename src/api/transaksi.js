@@ -33,6 +33,26 @@ function getAuthHeaders() {
 }
 
 /**
+ * Normalize transaction record from backend
+ */
+function normalizeTransactionRecord(record) {
+  if (!record || typeof record !== "object") return record;
+  const r = { ...record };
+
+  // Normalize approval status
+  if (r.ApprovalStatus && !r.approval_status)
+    r.approval_status = r.ApprovalStatus;
+  if (r.approval_status && !r.approvalStatus)
+    r.approvalStatus = r.approval_status;
+
+  // Normalize approval date
+  if (r.ApprovalDate && !r.approval_date) r.approval_date = r.ApprovalDate;
+  if (r.approval_date && !r.approvalDate) r.approvalDate = r.approval_date;
+
+  return r;
+}
+
+/**
  * ==================== PERBAIKAN ====================
  */
 
@@ -64,7 +84,8 @@ export async function createPerbaikan(data) {
     throw new Error(err.message || "Failed to create perbaikan");
   }
 
-  return response.json();
+  const result = await response.json();
+  return normalizeTransactionRecord(result);
 }
 
 /**
@@ -81,7 +102,11 @@ export async function listPerbaikan() {
     throw new Error("Failed to fetch perbaikan list");
   }
 
-  return response.json();
+  const result = await response.json();
+  if (Array.isArray(result)) {
+    return result.map(normalizeTransactionRecord);
+  }
+  return normalizeTransactionRecord(result);
 }
 
 /**

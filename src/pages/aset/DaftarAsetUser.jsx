@@ -14,6 +14,7 @@ import {
   FaChartLine,
   FaTools,
   FaExclamationTriangle,
+  FaSyncAlt,
 } from "react-icons/fa";
 import Confirm from "../../components/Confirm";
 import CreateAsset from "../../components/tabelAset/addAset/CreateAsset";
@@ -356,6 +357,9 @@ export default function User({ user, sessionUser, onLogout }) {
     loadAssets();
     loadBebanList();
     loadDepartemenList();
+
+    // Manual refresh only: remove polling
+    return undefined;
   }, [sessionUser]);
 
   // Allowed bebans for the current user (if not admin)
@@ -644,12 +648,21 @@ export default function User({ user, sessionUser, onLogout }) {
                       ref={tableRef}
                       resetOnAssetsChange={false}
                       leftControls={
-                        <button
-                          onClick={() => setShowCreate((s) => !s)}
-                          className="px-3 py-1 rounded-md bg-indigo-600 text-white text-sm flex items-center gap-2 mr-2"
-                        >
-                          <FaPlus className="h-4 w-4" />
-                        </button>
+                        <>
+                          <button
+                            onClick={() => setShowCreate((s) => !s)}
+                            className="px-3 py-1 rounded-md bg-indigo-600 text-white text-sm flex items-center gap-2 mr-2"
+                          >
+                            <FaPlus className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => loadAssets()}
+                            className="px-3 py-1 rounded-md bg-white border border-gray-200 text-sm flex items-center gap-2 mr-2"
+                            title="Refresh daftar aset"
+                          >
+                            <FaSyncAlt className="h-4 w-4 text-gray-600" />
+                          </button>
+                        </>
                       }
                       onView={(a) => setDetailAsset(a)}
                       useMaster={false}

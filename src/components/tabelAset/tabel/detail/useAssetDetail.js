@@ -272,7 +272,33 @@ export function useAssetDetail({ asset, onUpdated }) {
         });
         if (!cancelled) {
           if (found) {
-            setAsetRecord(found);
+            // Safeguard: avoid applying status changes coming from rejected transactions.
+            // Only accept a server-side status change when the asset record includes
+            // an explicit approval_status === 'disetujui' OR when current user is admin.
+            const currentUser =
+              typeof window !== "undefined"
+                ? JSON.parse(window.localStorage.getItem("user") || "null")
+                : null;
+            const isAdmin = currentUser?.role === "admin";
+            const approvalStatus =
+              found?.approval_status ??
+              found?.approvalStatus ??
+              found?.ApprovalStatus ??
+              null;
+
+            let safeFound = { ...found };
+            if (
+              !isAdmin &&
+              approvalStatus &&
+              String(approvalStatus).toLowerCase() !== "disetujui"
+            ) {
+              // Preserve existing statusAset from localAsset or incoming prop 'asset'
+              const preserveFrom = asetRecord || localAsset || asset || {};
+              if (preserveFrom.statusAset)
+                safeFound.statusAset = preserveFrom.statusAset;
+            }
+
+            setAsetRecord(safeFound);
             setAsetNotFound(false);
           } else {
             setAsetRecord(null);

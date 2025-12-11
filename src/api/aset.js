@@ -60,6 +60,12 @@ function normalizeAset(record) {
       r.tglPembelian = datePart;
     }
   }
+
+  // Normalize approval status fields
+  if (r.ApprovalStatus && !r.approval_status)
+    r.approval_status = r.ApprovalStatus;
+  if (r.ApprovalDate && !r.approval_date) r.approval_date = r.ApprovalDate;
+
   return r;
 }
 

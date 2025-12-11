@@ -6,6 +6,10 @@ import { useAssetDetail } from "./useAssetDetail";
 import AssetFormLayout from "@/components/tabelAset/FormLayout/AssetFormLayout";
 import BarcodeZoomModal from "./BarcodeZoomModal";
 import Confirm from "@/components/Confirm";
+import ApprovalActions from "@/components/ApprovalActions";
+import RejectModal from "@/components/RejectModal";
+import { approveAset, rejectAset } from "@/api/approval";
+import Alert from "@/components/Alert";
 
 export default function AssetDetail({
   asset,
@@ -54,8 +58,16 @@ export default function AssetDetail({
   } = useAssetDetail({ asset, onUpdated });
 
   const [activeTab, setActiveTab] = useState("detail"); // detail, riwayat, aksi
+  const [rejectModal, setRejectModal] = useState(false);
+  const [approvalLoading, setApprovalLoading] = useState(false);
+  const [approvalAlert, setApprovalAlert] = useState(null);
 
   const isAdmin = userRole === "admin";
+  const approvalStatus =
+    asetRecord?.approvalStatus || asetRecord?.approval_status;
+  const canApprove = isAdmin && approvalStatus === "diajukan";
+  const isRejected =
+    approvalStatus && String(approvalStatus).toLowerCase() === "ditolak";
 
   const handleDetailClick = () => {
     setActiveTab("detail");
@@ -67,6 +79,60 @@ export default function AssetDetail({
 
   const handleToolsClick = () => {
     setActiveTab("aksi");
+  };
+
+  const handleApprove = async () => {
+    if (!canApprove) return;
+
+    try {
+      setApprovalLoading(true);
+      await approveAset(asetRecord?.id || asetRecord?.asetId);
+
+      setApprovalAlert({
+        type: "success",
+        message: "Aset berhasil disetujui",
+      });
+      // Refresh asset data
+      setTimeout(() => {
+        onUpdated?.();
+        onClose?.();
+      }, 1500);
+    } catch (error) {
+      console.error("Approval failed:", error);
+      setApprovalAlert({
+        type: "error",
+        message: "Gagal menyetujui aset: " + error.message,
+      });
+    } finally {
+      setApprovalLoading(false);
+    }
+  };
+
+  const handleReject = async (alasan) => {
+    if (!canApprove) return;
+
+    try {
+      setApprovalLoading(true);
+      await rejectAset(asetRecord?.id || asetRecord?.asetId, alasan);
+
+      setApprovalAlert({
+        type: "success",
+        message: "Aset berhasil ditolak",
+      });
+      // Refresh asset data
+      setTimeout(() => {
+        onUpdated?.();
+        onClose?.();
+      }, 1500);
+    } catch (error) {
+      console.error("Rejection failed:", error);
+      setApprovalAlert({
+        type: "error",
+        message: "Gagal menolak aset: " + error.message,
+      });
+    } finally {
+      setApprovalLoading(false);
+    }
   };
 
   return (
@@ -83,11 +149,21 @@ export default function AssetDetail({
               historyTitle="Riwayat"
               toolsTitle="Aksi"
               activeTab={activeTab}
+              disableTools={isRejected}
             />
           </div>
 
           {/* Content - Conditional based on activeTab with fade animation */}
           <div key={activeTab} className="animate-tabFade">
+            {approvalAlert && (
+              <div className="mb-4">
+                <Alert
+                  type={approvalAlert.type}
+                  message={approvalAlert.message}
+                  onClose={() => setApprovalAlert(null)}
+                />
+              </div>
+            )}
             {activeTab === "detail" && (
               <AssetFormLayout
                 mode={isEditMode ? "edit" : "view"}
@@ -104,8 +180,20 @@ export default function AssetDetail({
                 akun={akun}
                 noBackdrop={true}
                 isEditing={isEditMode}
-                showEditButton={isAdmin && !isEditMode}
+                // Hide edit button when asset is rejected
+                showEditButton={
+                  isAdmin && !isEditMode && !canApprove && !isRejected
+                }
                 onEdit={handleStartEdit}
+                additionalButtons={
+                  canApprove && (
+                    <ApprovalActions
+                      onApprove={handleApprove}
+                      onReject={() => setRejectModal(true)}
+                      loading={approvalLoading}
+                    />
+                  )
+                }
                 imageProps={{
                   previewUrl,
                   file,
@@ -138,7 +226,7 @@ export default function AssetDetail({
               />
             )}
 
-            {activeTab === "aksi" && (
+            {activeTab === "aksi" && !isRejected && (
               <TabAksi
                 asetId={
                   asetRecord?.asetId ??
@@ -151,6 +239,14 @@ export default function AssetDetail({
                 onSwitchToRiwayat={() => setActiveTab("riwayat")}
                 onUpdated={onUpdated}
               />
+            )}
+            {activeTab === "aksi" && isRejected && (
+              <div className="p-6">
+                <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
+                  Aksi dan edit dinonaktifkan karena pengajuan aset ini telah
+                  ditolak.
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -179,6 +275,13 @@ export default function AssetDetail({
         cancelLabel="Batal"
         onConfirm={handleUpdateSubmit}
         onClose={() => setConfirmUpdate(false)}
+      />
+      <RejectModal
+        isOpen={rejectModal}
+        onClose={() => setRejectModal(false)}
+        onConfirm={handleReject}
+        title="Tolak Aset"
+        resourceType="Aset"
       />
     </>
   );

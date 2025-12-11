@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import CreateAsset from "../../components/tabelAset/addAset/CreateAsset";
 import SearchFilterBar from "../../components/tabelAset/filter/SearchFilterBar";
 import AssetTable from "../../components/tabelAset/tabel/AssetTable";
@@ -16,6 +17,7 @@ import {
   FaChartLine,
   FaTools,
   FaExclamationTriangle,
+  FaSyncAlt,
 } from "react-icons/fa";
 import {
   generateAsetId,
@@ -27,6 +29,7 @@ import {
 } from "../../utils/format";
 
 export default function Admin({ user, onLogout, sessionUser }) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showCreate, setShowCreate] = useState(false);
   const [assets, setAssets] = useState([]);
   const [bebanList, setBebanList] = useState([]);
@@ -44,6 +47,7 @@ export default function Admin({ user, onLogout, sessionUser }) {
   // Inline editing removed — only create is supported
   const tableRef = useRef(null);
   const [detailAsset, setDetailAsset] = useState(null);
+  const [highlightedAsset, setHighlightedAsset] = useState(null);
   const [form, setForm] = useState({
     asetId: "",
     accurateId: "",
@@ -170,11 +174,37 @@ export default function Admin({ user, onLogout, sessionUser }) {
       .sort();
   }, [bebanList]);
 
+  // Handle highlight query parameter
+  useEffect(() => {
+    const highlightId = searchParams.get("highlight");
+    if (highlightId && assets.length > 0 && !detailAsset) {
+      console.log("Highlighting asset:", highlightId);
+      const asset = assets.find(
+        (a) =>
+          String(a.asetId) === String(highlightId) ||
+          String(a.id) === String(highlightId)
+      );
+      if (asset) {
+        setHighlightedAsset(highlightId);
+        setDetailAsset(asset);
+        // Remove highlight param after opening
+        setTimeout(() => {
+          const params = new URLSearchParams(searchParams);
+          params.delete("highlight");
+          setSearchParams(params, { replace: true });
+        }, 100);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assets, searchParams.get("highlight")]);
+
   useEffect(() => {
     // Re-load assets and beban when sessionUser changes
     loadAssets();
     loadBebanList();
     loadDepartemenList();
+    // Manual refresh only: no polling
+    return undefined;
   }, [sessionUser]);
 
   // ESC key to close panel
@@ -571,12 +601,21 @@ export default function Admin({ user, onLogout, sessionUser }) {
                       loading={loading}
                       title={`Daftar Aset (Admin)`}
                       leftControls={
-                        <button
-                          onClick={() => setShowCreate((s) => !s)}
-                          className="px-3 py-1 rounded-md bg-indigo-600 text-white text-sm flex items-center gap-2 mr-2"
-                        >
-                          <FaPlus className="h-4 w-4" />
-                        </button>
+                        <>
+                          <button
+                            onClick={() => setShowCreate((s) => !s)}
+                            className="px-3 py-1 rounded-md bg-indigo-600 text-white text-sm flex items-center gap-2 mr-2"
+                          >
+                            <FaPlus className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => loadAssets()}
+                            className="px-3 py-1 rounded-md bg-white border border-gray-200 text-sm flex items-center gap-2 mr-2"
+                            title="Refresh daftar aset"
+                          >
+                            <FaSyncAlt className="h-4 w-4 text-gray-600" />
+                          </button>
+                        </>
                       }
                       ref={tableRef}
                       resetOnAssetsChange={false}

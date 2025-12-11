@@ -32,6 +32,10 @@ export default function SearchFilterBar({
   departemen = [],
   filterDepartemen = "All",
   onFilterDepartemenChange,
+  // Approval status filter
+  showApprovalStatus = false,
+  filterApprovalStatus = "All",
+  onFilterApprovalStatusChange,
 }) {
   const [masterAssets, setMasterAssets] = React.useState([]);
   const [masterLoading, setMasterLoading] = React.useState(false);
@@ -157,6 +161,21 @@ export default function SearchFilterBar({
                 {d.nama || d.kode}
               </option>
             ))}
+          </select>
+        )}
+
+        {/* APPROVAL STATUS FILTER */}
+        {showApprovalStatus && (
+          <select
+            value={filterApprovalStatus}
+            onChange={(e) => onFilterApprovalStatusChange?.(e.target.value)}
+            className="h-12 px-4 rounded-xl border border-gray-300 text-sm bg-white 
+                       focus:ring-2 focus:ring-indigo-500 shadow-sm transition"
+          >
+            <option value="All">Persetujuan (semua)</option>
+            <option value="diajukan">Menunggu Persetujuan</option>
+            <option value="disetujui">Disetujui</option>
+            <option value="ditolak">Ditolak</option>
           </select>
         )}
 

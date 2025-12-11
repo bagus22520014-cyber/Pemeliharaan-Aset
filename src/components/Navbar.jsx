@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
-import { FaBars, FaChevronDown, FaBell } from "react-icons/fa";
+import { FaBars, FaChevronDown, FaBell, FaSyncAlt } from "react-icons/fa";
+import NotificationPanel from "./NotificationPanel";
+import { listNotifications, getUnreadCount } from "@/api/notification";
+import { getApprovalDetail } from "@/api/approval";
 
 export default function Navbar({
   title = "Pemeliharaan Aset",
@@ -12,7 +15,152 @@ export default function Navbar({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const menuRef = useRef(null);
+  const notificationRef = useRef(null);
+
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    try {
+      console.log("Fetching notifications...");
+      const data = await listNotifications();
+      console.log("Notifications received:", data);
+
+      // Backend returns { total, notifications } not direct array
+      const notifArray = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.notifications)
+        ? data.notifications
+        : [];
+
+      console.log("Parsed notifications array:", notifArray);
+
+      // Filter: only show approval type notifications (exclude approved/rejected)
+      // This ensures notifications that should be deleted by backend don't show up
+      const approvalOnlyNotifications = notifArray.filter(
+        (n) => n.tipe === "approval"
+      );
+
+      console.log(
+        `Filtered notifications: ${notifArray.length} total, ${approvalOnlyNotifications.length} approval type`
+      );
+
+      // Exclude locally-hidden notification IDs (persisted by NotificationPanel)
+      let hiddenIds = [];
+      try {
+        const stored = localStorage.getItem("hiddenNotificationIds");
+        hiddenIds = stored ? JSON.parse(stored) : [];
+      } catch (err) {
+        hiddenIds = [];
+      }
+
+      const hiddenSet = new Set(hiddenIds);
+
+      // Validate approval_status for each approval notification by querying approval detail.
+      // If the record is no longer 'diajukan', exclude it (backend may not have cleaned up notification).
+      const validated = await Promise.all(
+        approvalOnlyNotifications.map(async (n) => {
+          if (hiddenSet.has(n.id)) return null;
+          if (!n.tabel_ref || !n.record_id) return n; // keep if missing refs
+
+          try {
+            const detail = await getApprovalDetail(
+              n.tabel_ref,
+              encodeURIComponent(n.record_id)
+            );
+            // detail may be normalized; check approval_status
+            const status =
+              detail?.approval_status ||
+              detail?.approvalStatus ||
+              detail?.status;
+            if (status && String(status).toLowerCase() !== "diajukan") {
+              // Already processed
+              return null;
+            }
+            return n;
+          } catch (err) {
+            // If detail fetch fails, keep the notification (avoid hiding on network errors)
+            console.warn(
+              "Failed to fetch approval detail for notification",
+              n.id,
+              err
+            );
+            return n;
+          }
+        })
+      );
+
+      const visibleNotifications = validated.filter(Boolean);
+      setNotifications(visibleNotifications);
+
+      // Try to get unread count from API, fallback to calculating from notifications
+      try {
+        const count = await getUnreadCount();
+        console.log("Unread count from API:", count);
+        // Only count approval type notifications
+        const approvalUnreadCount = visibleNotifications.filter(
+          (n) => !n.is_read && !n.IsRead
+        ).length;
+        setUnreadCount(approvalUnreadCount);
+      } catch (countErr) {
+        console.log(
+          "Unread count endpoint failed, calculating from notifications"
+        );
+        const unread = visibleNotifications.filter(
+          (n) => !n.is_read && !n.IsRead
+        ).length;
+        console.log("Calculated unread count:", unread);
+        setUnreadCount(unread);
+      }
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+      console.log("Using fallback dummy notifications for testing");
+      // Fallback: Use dummy notifications if backend not ready
+      const dummyNotifications = [
+        {
+          id: 1,
+          tipe: "approval",
+          judul: "Persetujuan Aset Baru",
+          pesan: "User john mengajukan aset baru: Laptop Dell XPS 15",
+          tabel_ref: "aset",
+          record_id: "0001/MLG-NET/2025",
+          is_read: false,
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: 2,
+          tipe: "approval",
+          judul: "Persetujuan Perbaikan",
+          pesan: "User jane mengajukan perbaikan untuk aset 0008/SRG-NET/2019",
+          tabel_ref: "perbaikan",
+          record_id: 5,
+          is_read: false,
+          created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+        },
+        {
+          id: 3,
+          tipe: "approved",
+          judul: "Aset Disetujui",
+          pesan: "Aset Anda (0002/MLG-NET/2025) telah disetujui oleh admin",
+          tabel_ref: "aset",
+          record_id: "0002/MLG-NET/2025",
+          is_read: true,
+          created_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+        },
+      ];
+      setNotifications(dummyNotifications);
+      setUnreadCount(2); // 2 unread
+    } finally {
+    }
+  };
+
+  // Initial fetch only — manual refresh replaces polling
+  useEffect(() => {
+    fetchNotifications();
+    return undefined;
+  }, []);
 
   useEffect(() => {
     const onDoc = (e) => {
@@ -54,15 +202,43 @@ export default function Navbar({
         {/* OPTIONAL RIGHT CONTROLS */}
         {rightControls}
 
-        {/* NOTIFICATION BELL */}
-        <button
-          className="relative p-2 rounded-lg hover:bg-gray-100 transition text-gray-700"
-          aria-label="Notifications"
-        >
-          <FaBell className="text-lg" />
-          {/* Badge for unread notifications */}
-          <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
-        </button>
+        {/* NOTIFICATION BELL + Manual Refresh */}
+        <div className="relative flex items-center" ref={notificationRef}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setNotificationOpen((s) => !s);
+            }}
+            className="relative p-2 rounded-lg hover:bg-gray-100 transition text-gray-700"
+            aria-label="Notifications"
+            title="Notifikasi"
+          >
+            <FaBell className="text-lg" />
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 h-5 w-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => fetchNotifications()}
+            className="ml-2 p-2 rounded-lg hover:bg-gray-100 transition text-gray-600"
+            title="Refresh notifikasi"
+            aria-label="Refresh notifications"
+          >
+            <FaSyncAlt />
+          </button>
+
+          {/* Notification Panel */}
+          {notificationOpen && (
+            <NotificationPanel
+              notifications={notifications}
+              onClose={() => setNotificationOpen(false)}
+              onRefresh={fetchNotifications}
+            />
+          )}
+        </div>
 
         {/* USER MENU */}
         <div className="relative" ref={menuRef}>

@@ -1,5 +1,6 @@
 import React from "react";
 import { FaTimes } from "react-icons/fa";
+import { getApprovalStatusClass, getApprovalStatusLabel } from "@/utils/format";
 
 export default function TableRow({
   a,
@@ -124,12 +125,26 @@ export default function TableRow({
         style={{ width: "60px", minWidth: "60px", maxWidth: "60px" }}
         className="p-3 text-center border-l border-gray-200"
       >
-        <span
-          title={a.keterangan || ""}
-          className={`inline-block w-3 h-3 rounded-full ${getStatusClass(
-            a.statusAset
-          )}`}
-        />
+        <div className="flex flex-col items-center gap-1">
+          <span
+            title={a.keterangan || ""}
+            className={`inline-block w-3 h-3 rounded-full ${getStatusClass(
+              a.statusAset
+            )}`}
+          />
+          {a.approval_status && a.approval_status !== "disetujui" && (
+            <span
+              title={`Status Persetujuan: ${getApprovalStatusLabel(
+                a.approval_status
+              )}`}
+              className={`text-[8px] px-1 py-0.5 rounded border ${getApprovalStatusClass(
+                a.approval_status
+              )}`}
+            >
+              {a.approval_status === "diajukan" ? "⏳" : "✗"}
+            </span>
+          )}
+        </div>
       </td>
       <td
         style={{ width: "180px", minWidth: "180px", maxWidth: "180px" }}

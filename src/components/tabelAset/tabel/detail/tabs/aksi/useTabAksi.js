@@ -178,7 +178,20 @@ export function useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat) {
 
     try {
       let created;
-      let newStatus = asset.statusAset;
+      let newStatus = asset?.statusAset;
+
+      // Determine current user role. For non-admin users we should NOT
+      // immediately change the asset status/location when creating a
+      // transaction (the change should happen only after approval).
+      // Admin-created items continue to be applied immediately (auto-approve).
+      let isAdmin = false;
+      try {
+        const raw = localStorage.getItem("user");
+        const u = raw ? JSON.parse(raw) : null;
+        isAdmin = u?.role === "admin" || u?.role === "Admin";
+      } catch (e) {
+        isAdmin = false;
+      }
 
       if (type === "perbaikan") {
         created = await createPerbaikan(asetId, {
@@ -194,7 +207,7 @@ export function useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat) {
           biaya: "",
           teknisi: "",
         });
-        newStatus = "diperbaiki";
+        newStatus = isAdmin ? "diperbaiki" : newStatus;
         setSuccess("Perbaikan berhasil ditambahkan");
         // Switch to riwayat tab after 1 second
         setTimeout(() => {
@@ -212,7 +225,7 @@ export function useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat) {
           Kerusakan: "",
           catatan: "",
         });
-        newStatus = "rusak";
+        newStatus = isAdmin ? "rusak" : newStatus;
         setSuccess("Data kerusakan berhasil ditambahkan");
         // Switch to riwayat tab after 1 second
         setTimeout(() => {
@@ -232,7 +245,7 @@ export function useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat) {
           peminjam: "",
           catatan: "",
         });
-        newStatus = "dipinjam";
+        newStatus = isAdmin ? "dipinjam" : newStatus;
         setSuccess("Data peminjaman berhasil ditambahkan");
         // Switch to riwayat tab after 1 second
         setTimeout(() => {
@@ -254,20 +267,20 @@ export function useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat) {
           harga_jual: "",
           catatan: "",
         });
-        newStatus = "dijual";
+        newStatus = isAdmin ? "dijual" : newStatus;
         setSuccess("Data penjualan berhasil ditambahkan");
         // Switch to riwayat tab after 1 second
         setTimeout(() => {
           if (onSwitchToRiwayat) onSwitchToRiwayat();
         }, 1000);
       } else if (type === "mutasi") {
-        // Backend expects numeric asset.id, not string asetId
+        // Prefer numeric asset.id, but accept string asetId as fallback (user view)
         const numericAssetId = asset?.id || asset?.ID;
-        if (!numericAssetId) {
+        const stringAsetId = asset?.asetId || asset?.AsetId;
+        if (!numericAssetId && !stringAsetId) {
           throw new Error("Asset ID tidak ditemukan");
         }
-        created = await createMutasi({
-          aset_id: numericAssetId,
+        const payload = {
           TglMutasi: mutationForm.tanggal,
           departemen_asal_id: mutationForm.departemenAsalId || null,
           departemen_tujuan_id: mutationForm.departemenTujuanId || null,
@@ -275,7 +288,11 @@ export function useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat) {
           ruangan_tujuan: mutationForm.ruanganTujuan?.trim() || null,
           alasan: mutationForm.alasan.trim(),
           catatan: mutationForm.catatan?.trim() || null,
-        });
+        };
+        if (numericAssetId) payload.aset_id = numericAssetId;
+        else payload.AsetId = stringAsetId;
+
+        created = await createMutasi(payload);
         setMutations((prev) => [...prev, created]);
 
         // Update aset data setelah mutasi
@@ -287,8 +304,8 @@ export function useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat) {
           updatePayload.lokasi = mutationForm.ruanganTujuan.trim();
         }
 
-        // Update aset jika ada perubahan
-        if (Object.keys(updatePayload).length > 0) {
+        // Update aset jika ada perubahan — only apply immediately for admins.
+        if (isAdmin && Object.keys(updatePayload).length > 0) {
           try {
             await updateAset(asetId, updatePayload);
             // Update asset object untuk UI
@@ -321,7 +338,8 @@ export function useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat) {
         }, 1000);
       }
 
-      if (onUpdated && newStatus !== asset.statusAset) {
+      // Only update status in UI immediately for admins (auto-approved flows).
+      if (isAdmin && onUpdated && newStatus !== asset?.statusAset) {
         onUpdated({ ...asset, statusAset: newStatus });
       }
     } catch (err) {

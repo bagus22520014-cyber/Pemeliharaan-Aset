@@ -108,6 +108,16 @@ export function useAssetTable({
   const totalNominal = useMemo(
     () =>
       sourceAssets.reduce((sum, a) => {
+        // Determine approval status from common variants
+        const apr =
+          a?.approval_status ?? a?.approvalStatus ?? a?.ApprovalStatus;
+
+        // If approval status is present, only include when it's 'disetujui'
+        if (typeof apr !== "undefined" && apr !== null) {
+          const aprNorm = String(apr).toLowerCase();
+          if (aprNorm !== "disetujui") return sum;
+        }
+
         const v = Number(a?.nilaiAset ?? 0);
         return sum + (Number.isFinite(v) ? v : 0);
       }, 0),

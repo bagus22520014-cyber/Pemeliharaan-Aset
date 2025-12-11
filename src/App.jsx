@@ -20,6 +20,7 @@ import {
   FaChartLine,
   FaDollarSign,
   FaCog,
+  FaClipboardCheck,
 } from "react-icons/fa";
 import Login from "@/pages/Login";
 import DaftarAset from "@/pages/aset/DaftarAset";
@@ -39,6 +40,7 @@ import LaporanPemeliharaan from "@/pages/laporan/LaporanPemeliharaan";
 import LaporanDowntime from "@/pages/laporan/LaporanDowntime";
 import LaporanBiaya from "@/pages/laporan/LaporanBiaya";
 import Pengaturan from "@/pages/Pengaturan";
+import PendingApprovals from "@/pages/approval/PendingApprovals";
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -272,6 +274,23 @@ function App() {
             </MainLayout>
           }
         />
+
+        {/* Approval - Admin Only */}
+        {user.role === "admin" && (
+          <Route
+            path="/approval/pending"
+            element={
+              <MainLayout
+                user={user}
+                onLogout={handleLogout}
+                title="Persetujuan Menunggu"
+                icon={FaClipboardCheck}
+              >
+                <PendingApprovals />
+              </MainLayout>
+            }
+          />
+        )}
 
         {/* Pengaturan */}
         <Route

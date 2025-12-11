@@ -20,6 +20,7 @@ import {
   FaFileAlt,
   FaChevronDown,
   FaChevronRight,
+  FaClipboardCheck,
 } from "react-icons/fa";
 
 const menuItems = [
@@ -78,6 +79,12 @@ const menuItems = [
         icon: FaHammer,
       },
     ],
+  },
+  {
+    title: "Persetujuan",
+    icon: FaClipboardCheck,
+    path: "/approval/pending",
+    adminOnly: true,
   },
   {
     title: "User dan Role",

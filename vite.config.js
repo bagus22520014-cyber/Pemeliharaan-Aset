@@ -84,6 +84,30 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      "/approval": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+        secure: false,
+        bypass: (req) => {
+          // Don't proxy React Router route /approval/pending
+          if (req.url === "/approval/pending") {
+            return req.url;
+          }
+          return null;
+        },
+      },
+      "/notification": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+        secure: false,
+        bypass: (req) => {
+          // Don't proxy React Router route /notifications
+          if (req.url === "/notifications") {
+            return req.url;
+          }
+          return null;
+        },
+      },
     },
   },
 });

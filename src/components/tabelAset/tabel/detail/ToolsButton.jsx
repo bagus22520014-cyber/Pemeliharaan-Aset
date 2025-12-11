@@ -10,6 +10,7 @@ export default function ToolsButton({
   toolsTitle = "Tools",
   activeTab = "detail",
   className = "",
+  disableTools = false,
 }) {
   return (
     <div className={`flex gap-1 ${className}`}>
@@ -44,19 +45,21 @@ export default function ToolsButton({
       </button>
 
       {/* Tools Tab */}
-      <button
-        onClick={onToolsClick}
-        title={toolsTitle}
-        className={`px-6 py-2.5 rounded-t-xl font-semibold transition flex items-center gap-2 ${
-          activeTab === "aksi"
-            ? "bg-gray-100 text-orange-600 border-t-2 border-orange-600"
-            : "bg-white/20 text-white hover:bg-white/30"
-        }`}
-        aria-label={toolsTitle}
-      >
-        <FaTools className="h-4 w-4" />
-        {toolsTitle}
-      </button>
+      {!disableTools && (
+        <button
+          onClick={onToolsClick}
+          title={toolsTitle}
+          className={`px-6 py-2.5 rounded-t-xl font-semibold transition flex items-center gap-2 ${
+            activeTab === "aksi"
+              ? "bg-gray-100 text-orange-600 border-t-2 border-orange-600"
+              : "bg-white/20 text-white hover:bg-white/30"
+          }`}
+          aria-label={toolsTitle}
+        >
+          <FaTools className="h-4 w-4" />
+          {toolsTitle}
+        </button>
+      )}
     </div>
   );
 }

@@ -83,14 +83,25 @@ export default function MutasiModal({
       setLoading(true);
       setError(null);
 
-      // Backend expects numeric asset.id, not string asetId
+      // determine if current user is admin; only admins should apply
+      // mutasi updates to the aset immediately (auto-approve behavior)
+      let isAdmin = false;
+      try {
+        const raw = localStorage.getItem("user");
+        const u = raw ? JSON.parse(raw) : null;
+        isAdmin = u?.role === "admin" || u?.role === "Admin";
+      } catch (e) {
+        isAdmin = false;
+      }
+
+      // Prefer numeric asset.id, but accept string asetId as fallback (user view)
       const numericAssetId = asset?.id || asset?.ID;
-      if (!numericAssetId) {
+      const stringAsetId = asset?.asetId || asset?.AsetId;
+      if (!numericAssetId && !stringAsetId) {
         throw new Error("Asset ID tidak ditemukan");
       }
 
       const payload = {
-        aset_id: numericAssetId,
         TglMutasi: form.TglMutasi,
         departemen_asal_id: form.departemen_asal_id || null,
         departemen_tujuan_id: form.departemen_tujuan_id || null,
@@ -99,6 +110,8 @@ export default function MutasiModal({
         alasan: form.alasan.trim(),
         catatan: form.catatan?.trim() || null,
       };
+      if (numericAssetId) payload.aset_id = numericAssetId;
+      else payload.AsetId = stringAsetId;
 
       await createMutasi(payload);
 
@@ -111,8 +124,8 @@ export default function MutasiModal({
         updatePayload.lokasi = form.ruangan_tujuan.trim();
       }
 
-      // Update aset jika ada perubahan
-      if (Object.keys(updatePayload).length > 0) {
+      // Update aset jika ada perubahan — only apply immediately for admins
+      if (isAdmin && Object.keys(updatePayload).length > 0) {
         try {
           await updateAset(asetId, updatePayload);
         } catch (updateErr) {
