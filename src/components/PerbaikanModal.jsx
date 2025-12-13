@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from "react";
 import Confirm from "./Confirm";
-import { listPerbaikan, createPerbaikan, deletePerbaikan } from "@/api/aset";
+import {
+  listPerbaikan,
+  createPerbaikan,
+  deletePerbaikan,
+  updateAset,
+} from "@/api/aset";
 import { formatRupiah } from "@/utils/format";
 import LocationSelector from "./LocationSelector";
 
@@ -44,6 +49,26 @@ export default function PerbaikanModal({ asetId, open, onClose, onChange }) {
       setError(null);
       const created = await createPerbaikan(asetId, form);
       setRepairs((prev) => [...(prev || []), created]);
+      // Update asset status per rules: user-created -> 'diperbaiki', admin-created -> 'aktif'
+      try {
+        let isAdmin = false;
+        try {
+          const raw = localStorage.getItem("user");
+          const u = raw ? JSON.parse(raw) : null;
+          isAdmin = u?.role === "admin" || u?.role === "Admin";
+        } catch (e) {
+          isAdmin = false;
+        }
+        const newStatus = isAdmin ? "aktif" : "diperbaiki";
+        try {
+          await updateAset(asetId, { statusAset: newStatus });
+          onChange?.({ ...created, updatedAssetStatus: newStatus });
+        } catch (e) {
+          // ignore update errors
+        }
+      } catch (e) {
+        // ignore
+      }
       setForm({
         tanggal_perbaikan: "",
         lokasi_id: null,

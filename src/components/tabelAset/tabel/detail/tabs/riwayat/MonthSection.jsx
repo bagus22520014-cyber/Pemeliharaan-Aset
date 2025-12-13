@@ -11,6 +11,7 @@ export function MonthSection({
   formatDate,
   renderRecordDetail,
   renderPerubahan,
+  showAll,
 }) {
   return (
     <div className="relative mb-10">
@@ -42,6 +43,7 @@ export function MonthSection({
             formatDate={formatDate}
             renderRecordDetail={renderRecordDetail}
             renderPerubahan={renderPerubahan}
+            showAll={showAll}
           />
         ))}
       </div>

@@ -11,6 +11,8 @@ export default function ToolsButton({
   activeTab = "detail",
   className = "",
   disableTools = false,
+  hideTools = false,
+  onDisabledClick,
 }) {
   return (
     <div className={`flex gap-1 ${className}`}>
@@ -45,16 +47,27 @@ export default function ToolsButton({
       </button>
 
       {/* Tools Tab */}
-      {!disableTools && (
+      {!hideTools && (
         <button
-          onClick={onToolsClick}
+          onClick={(e) => {
+            if (disableTools) {
+              e.preventDefault();
+              onDisabledClick && onDisabledClick(e);
+              return;
+            }
+            onToolsClick && onToolsClick(e);
+          }}
           title={toolsTitle}
           className={`px-6 py-2.5 rounded-t-xl font-semibold transition flex items-center gap-2 ${
             activeTab === "aksi"
               ? "bg-gray-100 text-orange-600 border-t-2 border-orange-600"
+              : disableTools
+              ? "bg-white/10 text-white/50 cursor-not-allowed"
               : "bg-white/20 text-white hover:bg-white/30"
           }`}
           aria-label={toolsTitle}
+          aria-disabled={disableTools}
+          tabIndex={disableTools ? -1 : 0}
         >
           <FaTools className="h-4 w-4" />
           {toolsTitle}

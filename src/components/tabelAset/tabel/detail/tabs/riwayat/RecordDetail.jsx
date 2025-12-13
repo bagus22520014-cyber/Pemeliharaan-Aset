@@ -57,6 +57,26 @@ export function RecordDetail({ item, recordDetails }) {
     </div>
   );
 
+  const renderAssetValueRow = () => {
+    const maybe =
+      detail?.nilaiAset ??
+      detail?.NilaiAset ??
+      detail?.nilai_aset ??
+      detail?.aset_nilai ??
+      detail?.AsetNilai ??
+      item?.nilaiAset ??
+      item?.NilaiAset;
+    if (maybe == null) return null;
+    return (
+      <DetailRow
+        icon={FiDollarSign}
+        label="Nilai Aset"
+        value={formatRupiah(maybe)}
+        valueClass="font-semibold text-slate-800"
+      />
+    );
+  };
+
   const MutationRow = ({ icon: Icon, label, from, to }) => (
     <div className="flex items-start gap-3 py-2">
       <div className="mt-0.5">
@@ -81,6 +101,7 @@ export function RecordDetail({ item, recordDetails }) {
     case "perbaikan":
       return (
         <div className="mt-4 p-5 bg-amber-50 border border-amber-200 rounded-xl space-y-1">
+          {renderAssetValueRow()}
           <div className="flex items-center gap-2 mb-3 pb-2 border-b border-amber-200">
             <div className="bg-amber-100 p-1.5 rounded-lg">
               <FiTool className="w-4 h-4 text-amber-600" />
@@ -139,6 +160,7 @@ export function RecordDetail({ item, recordDetails }) {
     case "rusak":
       return (
         <div className="mt-4 p-5 bg-red-50 border border-red-200 rounded-xl space-y-1">
+          {renderAssetValueRow()}
           <div className="flex items-center gap-2 mb-3 pb-2 border-b border-red-200">
             <div className="bg-red-100 p-1.5 rounded-lg">
               <FiAlertCircle className="w-4 h-4 text-red-600" />
@@ -192,6 +214,7 @@ export function RecordDetail({ item, recordDetails }) {
     case "dipinjam":
       return (
         <div className="mt-4 p-5 bg-indigo-50 border border-indigo-200 rounded-xl space-y-1">
+          {renderAssetValueRow()}
           <div className="flex items-center gap-2 mb-3 pb-2 border-b border-indigo-200">
             <div className="bg-indigo-100 p-1.5 rounded-lg">
               <FiUser className="w-4 h-4 text-indigo-600" />
@@ -248,6 +271,7 @@ export function RecordDetail({ item, recordDetails }) {
     case "dijual":
       return (
         <div className="mt-4 p-5 bg-slate-50 border border-slate-300 rounded-xl space-y-1">
+          {renderAssetValueRow()}
           <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-300">
             <div className="bg-slate-200 p-1.5 rounded-lg">
               <FiShoppingCart className="w-4 h-4 text-slate-700" />
@@ -293,6 +317,7 @@ export function RecordDetail({ item, recordDetails }) {
     case "mutasi":
       return (
         <div className="mt-4 p-5 bg-blue-50 border border-blue-200 rounded-xl space-y-1">
+          {renderAssetValueRow()}
           <div className="flex items-center gap-2 mb-3 pb-2 border-b border-blue-200">
             <div className="bg-blue-100 p-1.5 rounded-lg">
               <FiTruck className="w-4 h-4 text-blue-600" />

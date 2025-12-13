@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import LocationSelector from "./LocationSelector";
 import Confirm from "./Confirm";
 import { createRusak } from "@/api/transaksi";
+import { updateAset } from "@/api/aset";
 
 /**
  * Modal untuk mencatat aset rusak
@@ -48,6 +49,13 @@ export default function RusakModal({
       };
 
       await createRusak(payload);
+
+      // Update asset status to 'rusak'
+      try {
+        await updateAset(asetId, { statusAset: "rusak" });
+      } catch (e) {
+        console.warn("Failed to update asset status to rusak:", e);
+      }
 
       // Reset form
       setForm({
@@ -164,7 +172,21 @@ export default function RusakModal({
               disabled={loading || !form.TglRusak || !form.lokasi_id}
               className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
             >
-              {loading ? "Menyimpan..." : "Catat Aset Rusak"}
+              {(() => {
+                const raw =
+                  typeof window !== "undefined"
+                    ? localStorage.getItem("user")
+                    : null;
+                let isAdmin = false;
+                try {
+                  const u = raw ? JSON.parse(raw) : null;
+                  isAdmin = u?.role === "admin" || u?.role === "Admin";
+                } catch (e) {
+                  isAdmin = false;
+                }
+                if (loading) return "Menyimpan...";
+                return isAdmin ? "Catat Aset Rusak" : "Ajukan Aset Rusak";
+              })()}
             </button>
           </div>
         </div>
@@ -178,7 +200,20 @@ export default function RusakModal({
           danger={true}
           onClose={() => setConfirmSubmit(false)}
           onConfirm={handleSubmit}
-          confirmLabel="Ya, Catat Rusak"
+          confirmLabel={(() => {
+            const raw =
+              typeof window !== "undefined"
+                ? localStorage.getItem("user")
+                : null;
+            let isAdmin = false;
+            try {
+              const u = raw ? JSON.parse(raw) : null;
+              isAdmin = u?.role === "admin" || u?.role === "Admin";
+            } catch (e) {
+              isAdmin = false;
+            }
+            return isAdmin ? "Ya, Catat Rusak" : "Ya, Ajukan Rusak";
+          })()}
         />
       )}
     </>

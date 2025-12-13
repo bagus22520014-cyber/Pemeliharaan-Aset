@@ -11,7 +11,9 @@ import {
   getPendingApprovals,
   approveRecord,
   rejectRecord,
+  getApprovalDetail,
 } from "@/api/approval";
+import { updateAset, getAset } from "@/api/aset";
 import ApprovalActions from "@/components/ApprovalActions";
 import RejectModal from "@/components/RejectModal";
 import Alert from "@/components/Alert";
@@ -88,6 +90,127 @@ export default function PendingApprovals() {
       setProcessingId(record.record_id);
       setError("");
       await approveRecord(record.tabel_ref, record.record_id);
+      // If this was a perbaikan, set the related asset status to 'aktif'
+      try {
+        if (String(record.tabel_ref || "").toLowerCase() === "perbaikan") {
+          const detail = await getApprovalDetail(
+            record.tabel_ref,
+            record.record_id
+          );
+          const asetId =
+            detail?.asetId ||
+            detail?.AsetId ||
+            detail?.record?.aset_id ||
+            detail?.record?.AsetId ||
+            detail?.record?.asetId ||
+            detail?.aset_id ||
+            null;
+          if (asetId) {
+            try {
+              await updateAset(asetId, { statusAset: "aktif" });
+            } catch (e) {
+              console.warn(
+                "Failed to update asset status after perbaikan approve",
+                e
+              );
+            }
+          }
+        }
+        // Dijual: set NilaiAset = 0 and statusAset = 'dijual' on approve
+        if (String(record.tabel_ref || "").toLowerCase() === "dijual") {
+          try {
+            const detail = await getApprovalDetail(
+              record.tabel_ref,
+              record.record_id
+            );
+            const asetId =
+              detail?.asetId ||
+              detail?.AsetId ||
+              detail?.aset_id ||
+              detail?.record?.aset_id ||
+              detail?.record?.asetId ||
+              null;
+
+            const findCompositeAsetId = (obj, depth = 3) => {
+              if (!obj || depth < 0) return null;
+              if (
+                typeof obj === "string" &&
+                obj.includes("/") &&
+                obj.length > 5
+              )
+                return obj;
+              if (typeof obj !== "object") return null;
+              for (const v of Object.values(obj)) {
+                const found = findCompositeAsetId(v, depth - 1);
+                if (found) return found;
+              }
+              return null;
+            };
+
+            if (asetId) {
+              const payload = { nilaiAset: 0, statusAset: "dijual" };
+              let targetId = String(asetId);
+              try {
+                const resolved = await getAset(asetId);
+                if (resolved) {
+                  const hasNumericId =
+                    resolved.id && /^\d+$/.test(String(resolved.id));
+                  const hasAsetId =
+                    resolved.asetId &&
+                    String(resolved.asetId).trim().length > 0;
+                  if (/^\d+$/.test(String(asetId))) {
+                    if (hasNumericId) targetId = resolved.id;
+                  } else {
+                    if (hasAsetId) targetId = resolved.asetId;
+                    else targetId = String(asetId);
+                  }
+                }
+              } catch (resolveErr) {
+                const composite = findCompositeAsetId(detail);
+                if (composite) targetId = composite;
+              }
+
+              try {
+                // eslint-disable-next-line no-console
+                console.debug("apply-dijual->updateAset", {
+                  asetId,
+                  targetId,
+                  payload,
+                });
+                let res = await updateAset(targetId, payload);
+                // eslint-disable-next-line no-console
+                console.debug("apply-dijual->updateAset:response", res);
+              } catch (firstErr) {
+                const composite = findCompositeAsetId(detail);
+                if (composite && composite !== String(targetId)) {
+                  try {
+                    console.debug(
+                      "Retrying updateAset with composite AsetId",
+                      composite
+                    );
+                    const res2 = await updateAset(composite, payload);
+                    // eslint-disable-next-line no-console
+                    console.debug("apply-dijual->updateAset:response", res2);
+                  } catch (secondErr) {
+                    console.warn(
+                      "Failed to apply dijual to asset:",
+                      secondErr || firstErr
+                    );
+                  }
+                } else {
+                  console.warn("Failed to apply dijual to asset:", firstErr);
+                }
+              }
+            } else {
+              console.debug("apply-dijual: missing asetId", { detail });
+            }
+          } catch (e) {
+            console.warn("Failed to process dijual post-approve:", e);
+          }
+        }
+      } catch (e) {
+        console.warn("Post-approve hook failed:", e);
+      }
       setSuccess(`${record.tabel_ref} berhasil disetujui`);
       // Remove from list
       setApprovals((prev) =>
@@ -329,6 +452,10 @@ export default function PendingApprovals() {
                             setRejectModal({ open: true, record })
                           }
                           loading={processingId === record.record_id}
+                          allowReject={
+                            String(record.tabel_ref || "").toLowerCase() !==
+                            "aset"
+                          }
                         />
                       </div>
                     </div>

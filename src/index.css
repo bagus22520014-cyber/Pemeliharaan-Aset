@@ -84,6 +84,12 @@
   scrollbar-color: #d1d5db transparent;
 }
 
+/* Global font */
+body {
+  font-family: "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial;
+}
+
 .scrollbar-thin::-webkit-scrollbar {
   height: 6px;
 }

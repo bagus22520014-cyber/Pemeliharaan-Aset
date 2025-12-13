@@ -262,6 +262,7 @@ export default function Admin({ user, onLogout, sessionUser }) {
       { field: "asetId", label: "Aset ID" },
       { field: "namaAset", label: "Nama Aset" },
       { field: "grup", label: "Kategori" },
+      { field: "departemen_id", label: "Departemen" },
       { field: "akunPerkiraan", label: "Akun Perkiraan" },
       { field: "beban", label: "Beban" },
       { field: "tglPembelian", label: "Tanggal Perolehan" },

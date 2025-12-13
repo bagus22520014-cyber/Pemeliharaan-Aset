@@ -11,6 +11,7 @@ export function YearSection({
   formatDate,
   renderRecordDetail,
   renderPerubahan,
+  showAll,
 }) {
   return (
     <div className="relative">
@@ -41,6 +42,7 @@ export function YearSection({
             formatDate={formatDate}
             renderRecordDetail={renderRecordDetail}
             renderPerubahan={renderPerubahan}
+            showAll={showAll}
           />
         ))}
     </div>

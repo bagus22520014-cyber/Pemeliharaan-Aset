@@ -90,9 +90,7 @@ export default function ImageSection({
           </div>
         </div>
 
-        {uploadError && (
-          <div className="text-red-600 mt-2 text-center">{uploadError}</div>
-        )}
+        {/* upload errors intentionally not shown under browse controls */}
       </div>
     </div>
   );

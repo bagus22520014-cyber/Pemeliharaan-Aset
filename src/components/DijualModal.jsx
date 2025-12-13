@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import LocationSelector from "./LocationSelector";
 import Confirm from "./Confirm";
 import { createDijual } from "@/api/transaksi";
+import { updateAset } from "@/api/aset";
 import { formatRupiah } from "@/utils/format";
 
 /**
@@ -48,6 +49,16 @@ export default function DijualModal({
       setLoading(true);
       setError(null);
 
+      // detect admin to auto-apply full changes
+      let isAdmin = false;
+      try {
+        const raw = localStorage.getItem("user");
+        const u = raw ? JSON.parse(raw) : null;
+        isAdmin = u?.role === "admin" || u?.role === "Admin";
+      } catch (e) {
+        isAdmin = false;
+      }
+
       const payload = {
         AsetId: asetId,
         lokasi_id: form.lokasi_id,
@@ -58,6 +69,15 @@ export default function DijualModal({
       };
 
       await createDijual(payload);
+
+      // Update asset status to 'dijual'
+      try {
+        const updatePayload = { statusAset: "dijual" };
+        if (isAdmin) updatePayload.nilaiAset = 0;
+        await updateAset(asetId, updatePayload);
+      } catch (e) {
+        console.warn("Failed to update asset status to dijual:", e);
+      }
 
       // Reset form
       setForm({
@@ -205,7 +225,21 @@ export default function DijualModal({
               }
               className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
             >
-              {loading ? "Menyimpan..." : "Catat Penjualan"}
+              {(() => {
+                const raw =
+                  typeof window !== "undefined"
+                    ? localStorage.getItem("user")
+                    : null;
+                let isAdmin = false;
+                try {
+                  const u = raw ? JSON.parse(raw) : null;
+                  isAdmin = u?.role === "admin" || u?.role === "Admin";
+                } catch (e) {
+                  isAdmin = false;
+                }
+                if (loading) return "Menyimpan...";
+                return isAdmin ? "Catat Penjualan" : "Ajukan Penjualan";
+              })()}
             </button>
           </div>
         </div>
@@ -220,7 +254,20 @@ export default function DijualModal({
           )}?`}
           onClose={() => setConfirmSubmit(false)}
           onConfirm={handleSubmit}
-          confirmLabel="Ya, Catat Penjualan"
+          confirmLabel={(() => {
+            const raw =
+              typeof window !== "undefined"
+                ? localStorage.getItem("user")
+                : null;
+            let isAdmin = false;
+            try {
+              const u = raw ? JSON.parse(raw) : null;
+              isAdmin = u?.role === "admin" || u?.role === "Admin";
+            } catch (e) {
+              isAdmin = false;
+            }
+            return isAdmin ? "Ya, Catat Penjualan" : "Ya, Ajukan Penjualan";
+          })()}
         />
       )}
     </>

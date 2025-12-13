@@ -7,7 +7,7 @@ import {
   FiX,
 } from "react-icons/fi";
 
-export default function Alert({
+export default function ({
   type = "info",
   message = "",
   onClose,
@@ -56,7 +56,9 @@ export default function Alert({
           {icon}
           <div>
             <div className="font-semibold">{label}</div>
-            <div className="text-xs opacity-90">{message}</div>
+            <div className="text-xs opacity-90 whitespace-pre-line">
+              {message}
+            </div>
           </div>
         </div>
 

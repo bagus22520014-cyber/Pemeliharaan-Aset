@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Confirm from "./Confirm";
 import { createMutasi } from "@/api/mutasi";
 import { listDepartemen } from "@/api/departemen";
-import { updateAset } from "@/api/aset";
+import { updateAset, getAset } from "@/api/aset";
 
 /**
  * Modal untuk mencatat mutasi aset (perpindahan departemen/ruangan)
@@ -95,8 +95,19 @@ export default function MutasiModal({
       }
 
       // Prefer numeric asset.id, but accept string asetId as fallback (user view)
-      const numericAssetId = asset?.id || asset?.ID;
+      let numericAssetId = asset?.id || asset?.ID;
       const stringAsetId = asset?.asetId || asset?.AsetId;
+      // If we don't have a numeric id but do have a composite AsetId, try resolving it
+      if (!numericAssetId && stringAsetId) {
+        try {
+          const resolved = await getAset(stringAsetId);
+          if (resolved && (resolved.id || resolved.ID)) {
+            numericAssetId = resolved.id || resolved.ID;
+          }
+        } catch (err) {
+          // ignore; keep fallback to sending AsetId string
+        }
+      }
       if (!numericAssetId && !stringAsetId) {
         throw new Error("Asset ID tidak ditemukan");
       }
@@ -111,7 +122,8 @@ export default function MutasiModal({
         catatan: form.catatan?.trim() || null,
       };
       if (numericAssetId) payload.aset_id = numericAssetId;
-      else payload.AsetId = stringAsetId;
+      else if (stringAsetId) payload.AsetId = stringAsetId;
+      else throw new Error("Asset identifier tidak ditemukan");
 
       await createMutasi(payload);
 
@@ -351,7 +363,21 @@ export default function MutasiModal({
                 disabled={loading}
                 className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 transition-colors"
               >
-                {loading ? "Menyimpan..." : "Simpan Mutasi"}
+                {(() => {
+                  const raw =
+                    typeof window !== "undefined"
+                      ? localStorage.getItem("user")
+                      : null;
+                  let isAdmin = false;
+                  try {
+                    const u = raw ? JSON.parse(raw) : null;
+                    isAdmin = u?.role === "admin" || u?.role === "Admin";
+                  } catch (e) {
+                    isAdmin = false;
+                  }
+                  if (loading) return "Menyimpan...";
+                  return isAdmin ? "Simpan Mutasi" : "Ajukan Mutasi";
+                })()}
               </button>
             </div>
           </form>

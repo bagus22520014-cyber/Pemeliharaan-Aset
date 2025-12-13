@@ -148,24 +148,38 @@ export default function FormFields({
       {/* Harga Perolehan */}
       <FormField label="Harga Perolehan *" isViewMode={isViewMode}>
         {isViewMode ? (
-          <div className="text-base mt-1 font-bold text-gray-900">
-            {displayData?.nilaiAset != null
-              ? formatRupiah(displayData.nilaiAset)
-              : "-"}
+          <div className="text-base mt-1 font-bold text-gray-900 relative">
+            {displayData?.nilaiAset != null ? (
+              <>
+                <span className="absolute top-1/2 -translate-y-1/2 text-black font-medium">
+                  Rp
+                </span>
+                <span className="pl-6 font-medium">
+                  {formatRupiah(displayData.nilaiAset)}
+                </span>
+              </>
+            ) : (
+              "-"
+            )}
           </div>
         ) : (
-          <input
-            type="text"
-            value={formatRupiah(form?.nilaiAset)}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                nilaiAset: unformatRupiah(e.target.value),
-              })
-            }
-            placeholder="Masukkan total harga"
-            className="w-full text-base mt-1 bg-transparent border-none p-0 focus:outline-none focus:ring-0"
-          />
+          <div className="relative">
+            <div className="absolute top-1/2 -translate-y-1/2 text-black font-medium">
+              Rp
+            </div>
+            <input
+              type="text"
+              placeholder="0"
+              value={formatRupiah(form?.nilaiAset)}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  nilaiAset: unformatRupiah(e.target.value),
+                })
+              }
+              className="w-full text-base mt-1 bg-transparent border-none p-0 pl-6 focus:outline-none focus:ring-0"
+            />
+          </div>
         )}
       </FormField>
 
@@ -220,7 +234,7 @@ export default function FormFields({
       </FormField>
 
       {/* Departemen */}
-      <FormField label="Departemen" isViewMode={isViewMode}>
+      <FormField label="Departemen *" isViewMode={isViewMode}>
         {isViewMode ? (
           <div className="text-base mt-1">
             {displayData?.departemen?.nama ||
@@ -235,6 +249,8 @@ export default function FormFields({
             onChange={(e) =>
               setForm({ ...form, departemen_id: e.target.value })
             }
+            required
+            aria-required="true"
             className="w-full text-base mt-1 bg-transparent border-none p-0 focus:outline-none focus:ring-0 text-gray-400"
             style={{ color: form?.departemen_id ? "#1f2937" : "#9ca3af" }}
           >

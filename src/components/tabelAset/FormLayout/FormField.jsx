@@ -19,12 +19,31 @@ export default function FormField({
   className = "",
   editButton = null,
 }) {
+  const renderLabel = () => {
+    if (typeof label !== "string") return label;
+    // In view mode, strip asterisks from labels (don't show required mark)
+    if (isViewMode) return String(label).replace(/\*/g, "").trim();
+    // Split on '*' and insert a red '*' element between parts
+    const parts = label.split("*");
+    if (parts.length === 1) return label;
+    return (
+      <>
+        {parts.map((part, idx) => (
+          <span key={idx}>
+            {part}
+            {idx < parts.length - 1 && <span className="text-red-500">*</span>}
+          </span>
+        ))}
+      </>
+    );
+  };
+
   return (
     <div
       className={`p-4 rounded-xl bg-white shadow-sm border border-gray-100 ${className}`}
     >
       <div className="flex items-center justify-between">
-        <div className="font-medium text-gray-600">{label}</div>
+        <div className="font-medium text-gray-600">{renderLabel()}</div>
         {isViewMode && copyable && onCopy && (
           <button
             type="button"

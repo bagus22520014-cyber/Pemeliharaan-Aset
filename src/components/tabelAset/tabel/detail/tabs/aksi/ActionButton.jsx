@@ -29,6 +29,26 @@ export default function ActionButton({ type, loading, onClick }) {
   };
 
   const config = configs[type] || configs.aktif;
+  const raw =
+    typeof window !== "undefined" ? localStorage.getItem("user") : null;
+  let isAdmin = false;
+  try {
+    const u = raw ? JSON.parse(raw) : null;
+    isAdmin = u?.role === "admin" || u?.role === "Admin";
+  } catch (e) {
+    isAdmin = false;
+  }
+
+  const displayLabel = (() => {
+    if (loading) return "Menyimpan...";
+    let lbl = String(config.label || "");
+    if (!isAdmin) {
+      // Replace leading 'Simpan' or 'Catat' with 'Ajukan'
+      lbl = lbl.replace(/^Simpan\b/, "Ajukan");
+      lbl = lbl.replace(/^Catat\b/, "Ajukan");
+    }
+    return lbl;
+  })();
 
   return (
     <div className="absolute bottom-6 right-6 z-20">
@@ -39,7 +59,7 @@ export default function ActionButton({ type, loading, onClick }) {
         disabled:bg-gray-300 disabled:cursor-not-allowed font-bold transition-all 
         duration-300 shadow-lg hover:shadow-xl`}
       >
-        {loading ? "Menyimpan..." : config.label}
+        {displayLabel}
       </button>
     </div>
   );

@@ -21,7 +21,13 @@ import {
 } from "@/api/mutasi";
 import { getCurrentDate } from "@/utils/format";
 
-export function useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat) {
+export function useTabAksi(
+  asetId,
+  asset,
+  onUpdated,
+  onSwitchToRiwayat,
+  setHasPendingTransactions
+) {
   const [activeSubTab, setActiveSubTab] = useState("mutasi");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -207,7 +213,9 @@ export function useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat) {
           biaya: "",
           teknisi: "",
         });
-        newStatus = isAdmin ? "diperbaiki" : newStatus;
+        // Per PANDUAN: if created by user (diajukan), set asset status to 'diperbaiki'
+        // if created by admin (disetujui), server will set asset status to 'aktif'
+        newStatus = isAdmin ? "aktif" : "diperbaiki";
         setSuccess("Perbaikan berhasil ditambahkan");
         // Switch to riwayat tab after 1 second
         setTimeout(() => {
@@ -225,7 +233,8 @@ export function useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat) {
           Kerusakan: "",
           catatan: "",
         });
-        newStatus = isAdmin ? "rusak" : newStatus;
+        // For rusak, set asset status to 'rusak' regardless of creator
+        newStatus = "rusak";
         setSuccess("Data kerusakan berhasil ditambahkan");
         // Switch to riwayat tab after 1 second
         setTimeout(() => {
@@ -245,7 +254,8 @@ export function useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat) {
           peminjam: "",
           catatan: "",
         });
-        newStatus = isAdmin ? "dipinjam" : newStatus;
+        // For dipinjam, set asset status to 'dipinjam' regardless of creator
+        newStatus = "dipinjam";
         setSuccess("Data peminjaman berhasil ditambahkan");
         // Switch to riwayat tab after 1 second
         setTimeout(() => {
@@ -267,7 +277,8 @@ export function useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat) {
           harga_jual: "",
           catatan: "",
         });
-        newStatus = isAdmin ? "dijual" : newStatus;
+        // For dijual, set asset status to 'dijual' regardless of creator
+        newStatus = "dijual";
         setSuccess("Data penjualan berhasil ditambahkan");
         // Switch to riwayat tab after 1 second
         setTimeout(() => {
@@ -338,9 +349,26 @@ export function useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat) {
         }, 1000);
       }
 
-      // Only update status in UI immediately for admins (auto-approved flows).
-      if (isAdmin && onUpdated && newStatus !== asset?.statusAset) {
-        onUpdated({ ...asset, statusAset: newStatus });
+      // Update asset status in UI immediately per rules (both user and admin flows).
+      if (onUpdated && newStatus !== asset?.statusAset) {
+        try {
+          onUpdated({ ...asset, statusAset: newStatus });
+        } catch (e) {
+          console.warn("onUpdated callback failed when updating status:", e);
+        }
+      }
+
+      // If this create was made by a non-admin, mark parent as having pending transactions
+      // so UI (tabs) can react immediately without a full refresh.
+      try {
+        const raw = localStorage.getItem("user");
+        const u = raw ? JSON.parse(raw) : null;
+        const isAdmin = u?.role === "admin" || u?.role === "Admin";
+        if (!isAdmin && typeof setHasPendingTransactions === "function") {
+          setHasPendingTransactions(true);
+        }
+      } catch (e) {
+        // ignore
       }
     } catch (err) {
       console.error(`Error creating ${type}:`, err);

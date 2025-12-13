@@ -245,6 +245,22 @@ export default function User({ user, sessionUser, onLogout }) {
     );
   };
 
+  // display-friendly beban: show only prefix before '-' and dedupe
+  const getDisplayBeban = (raw) => {
+    const list = parseBebans(raw || "");
+    if (!list || list.length === 0) return "All";
+    const prefixes = Array.from(
+      new Set(
+        list.map((b) => {
+          const s = String(b || "").trim();
+          if (!s) return s;
+          return s.includes("-") ? s.split("-")[0] : s;
+        })
+      )
+    ).filter(Boolean);
+    return prefixes.length === 1 ? prefixes[0] : prefixes.join(",");
+  };
+
   // Compute beban options from loaded beban list
   const bebanOptions = useMemo(() => {
     return bebanList
@@ -642,9 +658,9 @@ export default function User({ user, sessionUser, onLogout }) {
                       assets={filtered}
                       showActions={false}
                       loading={loading}
-                      title={`Daftar Aset (Beban: ${
-                        sessionUser?.beban ?? "All"
-                      })`}
+                      title={`Daftar Aset (Beban: ${getDisplayBeban(
+                        sessionUser?.beban
+                      )})`}
                       ref={tableRef}
                       resetOnAssetsChange={false}
                       leftControls={

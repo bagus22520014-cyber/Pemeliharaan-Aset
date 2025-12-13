@@ -19,6 +19,9 @@ export default function ImageSection({
   uploadError,
 }) {
   const isViewMode = mode === "view";
+  const assetStatus =
+    asset?.statusAset || asset?.StatusAset || asset?.status || "";
+  const isSold = String(assetStatus).toLowerCase() === "dijual";
 
   return (
     <div className="md:col-span-2">
@@ -64,49 +67,54 @@ export default function ImageSection({
           )}
 
           {/* ACTION BUTTONS OVERLAY */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/30 rounded-md opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-            <input
-              type="file"
-              accept="image/*"
-              ref={inputRef}
-              style={{ display: "none" }}
-              onChange={handleFileChange}
-            />
+          {isSold ? (
+            // For sold assets: show a static darken overlay, no buttons or text
+            <div className="absolute inset-0 bg-black/40 rounded-md z-10 pointer-events-none" />
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/30 rounded-md opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+              <input
+                type="file"
+                accept="image/*"
+                ref={inputRef}
+                style={{ display: "none" }}
+                onChange={handleFileChange}
+              />
 
-            <button
-              type="button"
-              onClick={() => inputRef?.current?.click?.()}
-              className="h-10 px-4 rounded-md bg-white text-gray-800 font-medium shadow hover:bg-gray-100 pointer-events-auto"
-            >
-              {file
-                ? "Ganti Gambar"
-                : isViewMode
-                ? "Ganti Gambar"
-                : "Pilih Gambar"}
-            </button>
+              <button
+                type="button"
+                onClick={() => inputRef?.current?.click?.()}
+                className="h-10 px-4 rounded-md bg-white text-gray-800 font-medium shadow hover:bg-gray-100 pointer-events-auto"
+              >
+                {file
+                  ? "Ganti Gambar"
+                  : isViewMode
+                  ? "Ganti Gambar"
+                  : "Pilih Gambar"}
+              </button>
 
-            {file && (
-              <div className="flex items-center gap-3">
-                {isViewMode && (
+              {file && (
+                <div className="flex items-center gap-3">
+                  {isViewMode && (
+                    <button
+                      type="button"
+                      onClick={handleUpload}
+                      disabled={uploading}
+                      className="h-10 px-4 rounded-md bg-indigo-600 text-white font-medium shadow hover:bg-indigo-500 pointer-events-auto"
+                    >
+                      {uploading ? "Uploading…" : "Upload"}
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={handleUpload}
-                    disabled={uploading}
-                    className="h-10 px-4 rounded-md bg-indigo-600 text-white font-medium shadow hover:bg-indigo-500 pointer-events-auto"
+                    onClick={handleCancelFile}
+                    className="h-10 px-4 rounded-md bg-white text-gray-800 font-medium shadow hover:bg-gray-100 pointer-events-auto"
                   >
-                    {uploading ? "Uploading…" : "Upload"}
+                    Batal
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={handleCancelFile}
-                  className="h-10 px-4 rounded-md bg-white text-gray-800 font-medium shadow hover:bg-gray-100 pointer-events-auto"
-                >
-                  Batal
-                </button>
-              </div>
-            )}
-          </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {uploadError && (

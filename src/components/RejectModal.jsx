@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { FaTimes } from "react-icons/fa";
 
 /**
@@ -44,9 +45,9 @@ export default function RejectModal({
 
   if (!isOpen) return null;
 
-  return (
+  const modal = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-50 backdrop-blur-sm"
+      className="fixed inset-0 z-70 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={onClose}
       onKeyDown={handleKeyDown}
       role="dialog"
@@ -133,4 +134,6 @@ export default function RejectModal({
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }

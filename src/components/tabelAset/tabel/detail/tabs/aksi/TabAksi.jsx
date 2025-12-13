@@ -13,6 +13,7 @@ export default function TabAksi({
   onClose,
   onUpdated,
   onSwitchToRiwayat,
+  setHasPendingTransactions,
 }) {
   const {
     activeSubTab,
@@ -42,7 +43,13 @@ export default function TabAksi({
     handleCreateRequest,
     handleCreate,
     handleDelete,
-  } = useTabAksi(asetId, asset, onUpdated, onSwitchToRiwayat);
+  } = useTabAksi(
+    asetId,
+    asset,
+    onUpdated,
+    onSwitchToRiwayat,
+    setHasPendingTransactions
+  );
 
   const tabColors = {
     mutasi: "bg-blue-500",

@@ -495,7 +495,21 @@ export default function UserManagement() {
                   disabled={editLoading || editSelectedBases.length === 0}
                   className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
                 >
-                  {editLoading ? "Menyimpan..." : "Simpan"}
+                  {(() => {
+                    const raw =
+                      typeof window !== "undefined"
+                        ? localStorage.getItem("user")
+                        : null;
+                    let isAdmin = false;
+                    try {
+                      const u = raw ? JSON.parse(raw) : null;
+                      isAdmin = u?.role === "admin" || u?.role === "Admin";
+                    } catch (e) {
+                      isAdmin = false;
+                    }
+                    if (editLoading) return "Menyimpan...";
+                    return isAdmin ? "Simpan" : "Ajukan";
+                  })()}
                 </button>
                 <button
                   onClick={() => {

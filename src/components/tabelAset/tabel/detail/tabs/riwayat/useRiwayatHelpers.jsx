@@ -19,6 +19,7 @@ export const useRiwayatHelpers = () => {
       mutasi_input: "Mutasi",
       mutasi_edit: "Mutasi - Edit",
       mutasi_delete: "Mutasi - Hapus",
+      apply_mutasi: "Mutasi",
     };
     return labels[jenisAksi] || jenisAksi;
   };
@@ -225,6 +226,29 @@ export const useRiwayatHelpers = () => {
 
           if (!change || typeof change !== "object") return null;
           const { before, after } = change;
+
+          // Skip rendering if both before and after are null/undefined
+          if (before == null && after == null) return null;
+
+          // Skip if values are effectively equal (no-op)
+          let beforeStr;
+          let afterStr;
+          try {
+            beforeStr =
+              typeof before === "object"
+                ? JSON.stringify(before)
+                : String(before);
+          } catch (e) {
+            beforeStr = String(before);
+          }
+          try {
+            afterStr =
+              typeof after === "object" ? JSON.stringify(after) : String(after);
+          } catch (e) {
+            afterStr = String(after);
+          }
+          if (beforeStr === afterStr) return null;
+
           return (
             <div key={field} className="flex gap-2">
               <span className="font-semibold text-gray-700">{field}:</span>

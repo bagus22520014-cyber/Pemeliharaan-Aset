@@ -7,6 +7,7 @@ import { useFetchRecordDetail } from "./useFetchRecordDetail.jsx";
 
 export default function TabRiwayat({ asetId, onClose }) {
   const [history, setHistory] = useState([]);
+  const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [recordDetails, setRecordDetails] = useState({});
@@ -105,7 +106,7 @@ export default function TabRiwayat({ asetId, onClose }) {
           if (tabelRef && recordId && tabelRef !== "aset") {
             try {
               console.log(`Fetching detail for ${tabelRef}/${recordId}`);
-              const detail = await fetchRecordDetail(tabelRef, recordId);
+              const detail = await fetchRecordDetail(tabelRef, recordId, item);
 
               if (detail) {
                 console.log(`Got detail for ${tabelRef}/${recordId}:`, detail);
@@ -115,6 +116,176 @@ export default function TabRiwayat({ asetId, onClose }) {
               }
             } catch (err) {
               console.error(`Failed to fetch ${tabelRef} detail:`, err);
+            }
+          }
+        }
+        // For aset table entries, attempt to fetch by recordId or fallback using item
+        for (const item of filteredData) {
+          const tabelRef = item.tabelRef || item.tabel_ref;
+          const recordId = item.recordId || item.record_id;
+          if (tabelRef === "aset" && recordId) {
+            try {
+              console.log(`Fetching aset detail for ${recordId}`);
+
+              // If the item contains a composite AsetId (asetIdString or AsetId),
+              // prefer querying by AsetId to avoid numeric /aset/:id 404s.
+              const asetKey =
+                item.asetIdString || item.AsetId || item.asetId || null;
+
+              let detail = null;
+              if (asetKey) {
+                const q = encodeURIComponent(asetKey);
+                const headers = {};
+                const raw = localStorage.getItem("user");
+                const user = raw ? JSON.parse(raw) : {};
+                if (user?.token) headers.Authorization = `Bearer ${user.token}`;
+                if (user?.role) headers["x-role"] = String(user.role);
+                if (user?.username)
+                  headers["x-username"] = String(user.username);
+
+                try {
+                  const resp = await fetch(`/aset?AsetId=${q}`, {
+                    credentials: "include",
+                    headers,
+                  });
+                  if (resp.ok) {
+                    let d = await resp.json();
+                    // Normalize array responses
+                    if (Array.isArray(d)) {
+                      let match = d.find(
+                        (x) =>
+                          String(x.id) === String(recordId) ||
+                          String(x.AsetId) === String(asetKey)
+                      );
+                      if (!match && d.length === 1) match = d[0];
+                      d = match || null;
+                    }
+                    detail = d;
+                    console.log(`Fetched aset by AsetId ${asetKey}:`, detail);
+                  } else {
+                    console.warn(
+                      `/aset?AsetId=${asetKey} returned ${resp.status}`
+                    );
+                  }
+                } catch (err) {
+                  console.error(
+                    `Error fetching aset by AsetId ${asetKey}:`,
+                    err
+                  );
+                }
+              }
+
+              // Fallback to generic fetchRecordDetail (which includes its own fallback)
+              if (!detail) {
+                detail = await fetchRecordDetail(tabelRef, recordId, item);
+              }
+
+              if (detail) {
+                // attach normalized detail
+                details[`${tabelRef}-${recordId}`] = detail;
+                // also enrich the timeline item so summary blocks can read NilaiAset directly
+                try {
+                  // Common name/id fields
+                  item.namaAset =
+                    item.namaAset ||
+                    detail?.NamaAset ||
+                    detail?.namaAset ||
+                    detail?.nama ||
+                    detail?.Nama;
+                  item.AccurateId =
+                    item.AccurateId ||
+                    detail?.AccurateId ||
+                    detail?.accurateId ||
+                    detail?.AccurateID;
+                  item.Spesifikasi =
+                    item.Spesifikasi ||
+                    detail?.Spesifikasi ||
+                    detail?.spesifikasi ||
+                    detail?.spec;
+
+                  // Group / kategori / akun
+                  item.Grup =
+                    item.Grup ||
+                    detail?.Grup ||
+                    detail?.grup ||
+                    detail?.kategori;
+                  item.AkunPerkiraan =
+                    item.AkunPerkiraan ||
+                    detail?.AkunPerkiraan ||
+                    detail?.akunPerkiraan ||
+                    detail?.akun;
+
+                  // Currency / nilai
+                  item.nilaiAset =
+                    item.nilaiAset ||
+                    detail?.NilaiAset ||
+                    detail?.nilaiAset ||
+                    detail?.nilai_perolehan ||
+                    detail?.harga_perolehan ||
+                    detail?.aset_nilai ||
+                    detail?.AsetNilai ||
+                    detail?.nilai;
+
+                  // Beban / departemen
+                  item.beban =
+                    item.beban ||
+                    detail?.beban ||
+                    detail?.Beban ||
+                    (detail?.beban &&
+                      (detail.beban.kode || detail.beban.nama)) ||
+                    null;
+                  item.bebanKode =
+                    item.bebanKode ||
+                    detail?.bebanKode ||
+                    detail?.beban_kode ||
+                    detail?.BebanKode ||
+                    (detail?.beban && detail.beban.kode);
+                  item.departemenNama =
+                    item.departemenNama ||
+                    detail?.departemenNama ||
+                    detail?.departemen_nama ||
+                    detail?.DepartemenNama ||
+                    (detail?.departemen &&
+                      (detail.departemen.nama || detail.departemen.kode)) ||
+                    detail?.departemen;
+
+                  // Dates, pengguna, lokasi, masa manfaat
+                  item.TglPembelian =
+                    item.TglPembelian ||
+                    detail?.TglPembelian ||
+                    detail?.tglPembelian ||
+                    detail?.tanggal ||
+                    detail?.TglPembelian;
+                  item.MasaManfaat =
+                    item.MasaManfaat ||
+                    detail?.MasaManfaat ||
+                    detail?.masaManfaat ||
+                    detail?.masa;
+                  item.Pengguna =
+                    item.Pengguna ||
+                    detail?.Pengguna ||
+                    detail?.pengguna ||
+                    detail?.user ||
+                    detail?.pemakai;
+                  item.Lokasi =
+                    item.Lokasi ||
+                    detail?.Lokasi ||
+                    detail?.lokasi ||
+                    detail?.ruangan ||
+                    detail?.room;
+
+                  // status
+                  item.statusAset =
+                    item.statusAset ||
+                    detail?.StatusAset ||
+                    detail?.statusAset ||
+                    detail?.status;
+                } catch (e) {
+                  // ignore
+                }
+              }
+            } catch (err) {
+              console.error(`Failed to fetch aset detail:`, err);
             }
           }
         }
@@ -206,7 +377,12 @@ export default function TabRiwayat({ asetId, onClose }) {
       <div className="flex-1 flex flex-col">
         {/* Header - Sticky */}
         <div className="bg-gray-100 px-6 py-4 border-b border-gray-300 flex items-center justify-between">
-          <h2 className="text-xl font-semibold tracking-wide">Riwayat Aset</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-semibold tracking-wide">
+              Riwayat Aset
+            </h2>
+          </div>
+
           <button
             type="button"
             onClick={onClose}

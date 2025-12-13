@@ -162,6 +162,14 @@ export default function Navbar({
     return undefined;
   }, []);
 
+  // Listen for global notification refresh events (dispatched after approve in detail)
+  useEffect(() => {
+    const onRefreshEvent = () => fetchNotifications();
+    window.addEventListener("notifications:refresh", onRefreshEvent);
+    return () =>
+      window.removeEventListener("notifications:refresh", onRefreshEvent);
+  }, []);
+
   useEffect(() => {
     const onDoc = (e) => {
       if (!menuRef.current) return;
