@@ -34,7 +34,6 @@ export default function TabRiwayat({ asetId, onClose }) {
       setError(null);
       try {
         const data = await listRiwayat(asetId);
-        console.log("Riwayat data:", data);
 
         // Filter out edit_lokasi and duplicate mutasi records
         const filteredData = (data || []).filter((item) => {
@@ -96,26 +95,15 @@ export default function TabRiwayat({ asetId, onClose }) {
           const tabelRef = item.tabelRef || item.tabel_ref;
           const recordId = item.recordId || item.record_id;
 
-          console.log(`Processing item:`, {
-            id: item.id,
-            tabelRef,
-            recordId,
-            jenisAksi: item.jenisAksi || item.jenis_aksi,
-          });
-
           if (tabelRef && recordId && tabelRef !== "aset") {
             try {
-              console.log(`Fetching detail for ${tabelRef}/${recordId}`);
               const detail = await fetchRecordDetail(tabelRef, recordId, item);
 
               if (detail) {
-                console.log(`Got detail for ${tabelRef}/${recordId}:`, detail);
                 details[`${tabelRef}-${recordId}`] = detail;
-              } else {
-                console.warn(`No detail returned for ${tabelRef}/${recordId}`);
               }
             } catch (err) {
-              console.error(`Failed to fetch ${tabelRef} detail:`, err);
+              // ignore detail fetch errors
             }
           }
         }
@@ -125,8 +113,6 @@ export default function TabRiwayat({ asetId, onClose }) {
           const recordId = item.recordId || item.record_id;
           if (tabelRef === "aset" && recordId) {
             try {
-              console.log(`Fetching aset detail for ${recordId}`);
-
               // If the item contains a composite AsetId (asetIdString or AsetId),
               // prefer querying by AsetId to avoid numeric /aset/:id 404s.
               const asetKey =
@@ -161,17 +147,11 @@ export default function TabRiwayat({ asetId, onClose }) {
                       d = match || null;
                     }
                     detail = d;
-                    console.log(`Fetched aset by AsetId ${asetKey}:`, detail);
                   } else {
-                    console.warn(
-                      `/aset?AsetId=${asetKey} returned ${resp.status}`
-                    );
+                    // backend returned non-ok for aset lookup by AsetId
                   }
                 } catch (err) {
-                  console.error(
-                    `Error fetching aset by AsetId ${asetKey}:`,
-                    err
-                  );
+                  // ignore lookup error
                 }
               }
 
@@ -285,11 +265,11 @@ export default function TabRiwayat({ asetId, onClose }) {
                 }
               }
             } catch (err) {
-              console.error(`Failed to fetch aset detail:`, err);
+              // ignore
             }
           }
         }
-        console.log("All record details:", details);
+
         setRecordDetails(details);
       } catch (err) {
         setError(err.message || "Gagal memuat riwayat");

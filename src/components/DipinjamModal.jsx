@@ -66,7 +66,7 @@ export default function DipinjamModal({
       try {
         await updateAset(asetId, { statusAset: "dipinjam" });
       } catch (e) {
-        console.warn("Failed to update asset status to dipinjam:", e);
+        // ignore update failure
       }
 
       // Reset form

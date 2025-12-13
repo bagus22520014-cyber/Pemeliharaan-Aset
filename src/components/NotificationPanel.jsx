@@ -13,6 +13,7 @@ import {
   markAsRead,
   markAllAsRead,
   deleteNotification,
+  createNotification,
 } from "@/api/notification";
 import { approveRecord, rejectRecord, getApprovalDetail } from "@/api/approval";
 import RejectModal from "@/components/RejectModal";
@@ -54,7 +55,7 @@ export default function NotificationPanel({
         JSON.stringify([...hiddenIds])
       );
     } catch (err) {
-      console.warn("Failed to save hidden notification IDs:", err);
+      // ignore storage errors
     }
   }, [hiddenIds]);
 
@@ -85,7 +86,6 @@ export default function NotificationPanel({
       const isNotBellButton = !e.target.closest('[aria-label="Notifications"]');
 
       if (isOutsidePanel && isNotBellButton) {
-        console.log("Click outside notification panel detected");
         onClose?.();
       }
     };
@@ -114,17 +114,13 @@ export default function NotificationPanel({
     }
 
     try {
-      console.log("Notification clicked:", notification);
       // Mark as read
       if (!notification.is_read) {
         try {
           await markAsRead(notification.id);
           onRefresh?.();
         } catch (err) {
-          console.warn(
-            "Could not mark as read (backend might not be ready):",
-            err
-          );
+          // ignore mark-as-read errors
         }
       }
 
@@ -136,21 +132,18 @@ export default function NotificationPanel({
         notification.record_id ||
         notification.RecordId;
       if (assetIdCandidate) {
-        console.log("Navigating to asset detail:", assetIdCandidate);
         navigate(
           `/aset/daftar?highlight=${encodeURIComponent(assetIdCandidate)}`
         );
       } else if (notification.tipe === "approval") {
-        console.log("Navigating to approval page");
         navigate("/approval/pending");
       } else {
-        console.log("Navigating to asset list");
         navigate("/aset/daftar");
       }
 
       onClose?.();
     } catch (err) {
-      console.error("Failed to handle notification click:", err);
+      // ignore navigation errors
     }
   };
 
@@ -161,21 +154,28 @@ export default function NotificationPanel({
 
     try {
       setProcessingId(notification.id);
-      console.log("Approving:", notification.tabel_ref, notification.record_id);
       await approveRecord(notification.tabel_ref, notification.record_id);
 
-      // After approval, try to update related asset status
+      // Fetch approval detail (best-effort)
+      let approvalDetail = null;
       try {
-        const detail = await getApprovalDetail(
+        approvalDetail = await getApprovalDetail(
           notification.tabel_ref,
           encodeURIComponent(notification.record_id)
         );
+      } catch (e) {
+        // ignore detail fetch errors
+      }
+
+      // Try to update related asset status based on the approval type
+      try {
         const asetId =
-          detail?.aset_id ||
-          detail?.AsetId ||
-          detail?.asetId ||
-          detail?.record_id ||
-          detail?.RecordId;
+          approvalDetail?.aset_id ||
+          approvalDetail?.AsetId ||
+          approvalDetail?.asetId ||
+          approvalDetail?.record_id ||
+          approvalDetail?.RecordId ||
+          null;
         if (asetId) {
           const type = String(notification.tabel_ref || "").toLowerCase();
           let newStatus = null;
@@ -189,33 +189,74 @@ export default function NotificationPanel({
               await updateAset(asetId, { statusAset: newStatus });
               try {
                 window.dispatchEvent(new Event("assetsUpdated"));
-              } catch (e) {}
+              } catch (e) {
+                /* ignore */
+              }
             } catch (e) {
-              console.warn("Failed to update asset after approve (notif):", e);
+              /* ignore update failure */
             }
           }
         }
       } catch (e) {
-        console.warn("Failed to get approval detail after approve (notif):", e);
+        /* ignore status update errors */
       }
 
-      // Try to delete the server-side notification (if backend supports it)
+      // Notify the submitter (best-effort)
+      try {
+        const submitter =
+          approvalDetail?.created_by ||
+          approvalDetail?.createdBy ||
+          approvalDetail?.CreatedBy ||
+          approvalDetail?.user_id ||
+          approvalDetail?.UserId ||
+          null;
+        if (submitter) {
+          const typeLabel =
+            typeLabels[String(notification.tabel_ref || "").toLowerCase()] ||
+            notification.tabel_ref;
+          const judul = `${typeLabel} Disetujui`;
+          const pesan = `Permintaan ${typeLabel} untuk ${
+            approvalDetail?.asetId ||
+            approvalDetail?.AsetId ||
+            approvalDetail?.aset_id ||
+            "aset"
+          } telah disetujui.`;
+          try {
+            await createNotification({
+              user_id: submitter,
+              tipe: "approved",
+              judul,
+              pesan,
+              tabel_ref: notification.tabel_ref,
+              record_id: notification.record_id,
+              aset_id:
+                approvalDetail?.asetId ||
+                approvalDetail?.AsetId ||
+                approvalDetail?.aset_id ||
+                null,
+            });
+          } catch (e) {
+            /* ignore notification creation errors */
+          }
+        }
+      } catch (e) {
+        /* ignore submitter notify errors */
+      }
+
+      // Delete the originating notification (best-effort)
       try {
         await deleteNotification(notification.id);
       } catch (err) {
-        console.warn("Failed to delete notification on server:", err);
+        /* ignore delete errors */
       }
 
-      // Immediately hide this notification locally
+      // Immediately hide this notification locally and refresh
       setHiddenIds((prev) => new Set([...prev, notification.id]));
-
-      // Refresh to get updated list from backend
       setTimeout(() => {
         onRefresh?.();
       }, 500);
     } catch (err) {
-      console.error("Failed to approve:", err);
-      alert(err.message || "Gagal menyetujui");
+      alert(err?.message || "Gagal menyetujui");
     } finally {
       setProcessingId(null);
     }
@@ -234,24 +275,62 @@ export default function NotificationPanel({
     if (!notification) return;
     try {
       setProcessingId(notification.id);
-      console.log("Rejecting:", notification.tabel_ref, notification.record_id);
       await rejectRecord(
         notification.tabel_ref,
         notification.record_id,
         alasan
       );
 
+      // Notify the submitter about rejection (best-effort)
+      try {
+        const detail = await getApprovalDetail(
+          notification.tabel_ref,
+          encodeURIComponent(notification.record_id)
+        );
+        const submitter =
+          detail?.created_by ||
+          detail?.createdBy ||
+          detail?.CreatedBy ||
+          detail?.user_id ||
+          detail?.UserId ||
+          null;
+        if (submitter) {
+          const typeLabel =
+            typeLabels[String(notification.tabel_ref || "").toLowerCase()] ||
+            notification.tabel_ref;
+          const judul = `${typeLabel} Ditolak`;
+          const pesan = `Permintaan ${typeLabel} untuk ${
+            detail?.asetId || detail?.AsetId || detail?.aset_id || "aset"
+          } ditolak. Alasan: ${alasan}`;
+          try {
+            await createNotification({
+              user_id: submitter,
+              tipe: "rejected",
+              judul,
+              pesan,
+              tabel_ref: notification.tabel_ref,
+              record_id: notification.record_id,
+              aset_id:
+                detail?.asetId || detail?.AsetId || detail?.aset_id || null,
+            });
+          } catch (e) {
+            // ignore notification creation errors
+          }
+        }
+      } catch (e) {
+        // ignore errors
+      }
+
       try {
         await deleteNotification(notification.id);
       } catch (err) {
-        console.warn("Failed to delete notification on server:", err);
+        // ignore delete errors
       }
 
       setHiddenIds((prev) => new Set([...prev, notification.id]));
       setTimeout(() => onRefresh?.(), 500);
       setRejectModal({ open: false, notification: null });
     } catch (err) {
-      console.error("Failed to reject:", err);
       setRejectError(err.message || "Gagal menolak");
     } finally {
       setProcessingId(null);
@@ -261,15 +340,10 @@ export default function NotificationPanel({
   // Handle mark all as read
   const handleMarkAllRead = async () => {
     try {
-      console.log("Marking all notifications as read");
       await markAllAsRead();
       onRefresh?.();
     } catch (err) {
-      console.warn(
-        "Failed to mark all as read (backend might not be ready):",
-        err
-      );
-      // Still refresh to update UI with dummy data
+      // ignore
       onRefresh?.();
     }
   };
@@ -279,10 +353,7 @@ export default function NotificationPanel({
     try {
       localStorage.removeItem("hiddenNotificationIds");
     } catch (err) {
-      console.warn(
-        "Failed to clear hiddenNotificationIds from localStorage",
-        err
-      );
+      // ignore
     }
     setHiddenIds(new Set());
     // Refresh list from backend to ensure fresh state
@@ -396,9 +467,20 @@ export default function NotificationPanel({
   });
   const unreadCount = visibleNotifications.filter((n) => !n.is_read).length;
 
-  console.log(
-    `Total notifications: ${notifications.length}, Visible: ${visibleNotifications.length}, Hidden: ${hiddenIds.size}`
-  );
+  // summary logging removed
+
+  // Log incoming notifications that target the current user (for debugging)
+  useEffect(() => {
+    try {
+      // silent: no per-notification debug logging
+      const raw = localStorage.getItem("user");
+      const me = raw ? JSON.parse(raw) : null;
+      const meId = me?.id ?? me?.ID ?? me?.username ?? me?.user_id;
+      if (!meId) return;
+    } catch (e) {
+      /* ignore */
+    }
+  }, [notifications]);
 
   // Fetch approval detail to obtain asset name when notification doesn't include it
   useEffect(() => {
@@ -446,11 +528,7 @@ export default function NotificationPanel({
                 }
               }
             } catch (e) {
-              console.warn(
-                "Failed listAset fallback for notification:",
-                n.id,
-                e
-              );
+              // ignore fallback lookup errors
             }
           }
 
@@ -458,11 +536,7 @@ export default function NotificationPanel({
             setNotifNames((prev) => ({ ...prev, [n.id]: { name, asetId } }));
           }
         } catch (err) {
-          console.warn(
-            "Failed to fetch approval detail for notification:",
-            n.id,
-            err
-          );
+          // ignore fetch errors
         }
       })();
     });

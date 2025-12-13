@@ -151,7 +151,7 @@ export default function Admin({ user, onLogout, sessionUser }) {
       const data = await listBeban();
       setBebanList(data || []);
     } catch (err) {
-      console.error("Failed to load beban list:", err);
+      // ignore load errors
       setBebanList([]);
     }
   };
@@ -161,7 +161,7 @@ export default function Admin({ user, onLogout, sessionUser }) {
       const data = await listDepartemen();
       setDepartemenList(data || []);
     } catch (err) {
-      console.error("Failed to load departemen list:", err);
+      // ignore load errors
       setDepartemenList([]);
     }
   };
@@ -178,7 +178,6 @@ export default function Admin({ user, onLogout, sessionUser }) {
   useEffect(() => {
     const highlightId = searchParams.get("highlight");
     if (highlightId && assets.length > 0 && !detailAsset) {
-      console.log("Highlighting asset:", highlightId);
       const asset = assets.find(
         (a) =>
           String(a.asetId) === String(highlightId) ||
@@ -310,7 +309,7 @@ export default function Admin({ user, onLogout, sessionUser }) {
         const assetId = created?.asetId || created?.id || finalPayload.asetId;
 
         if (!assetId) {
-          console.error("No asset ID found for image upload");
+          // no asset id for image upload — notify user
           setAlert({
             type: "warning",
             message:
@@ -325,7 +324,7 @@ export default function Admin({ user, onLogout, sessionUser }) {
               created.gambar = uploadResult.gambar;
             }
           } catch (uploadErr) {
-            console.error("Image upload failed:", uploadErr);
+            // image upload failed — show warning
             setAlert({
               type: "warning",
               message: `Aset berhasil ditambahkan tetapi upload gambar gagal: ${

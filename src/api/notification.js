@@ -103,16 +103,52 @@ export async function listNotifications(onlyUnread = false) {
   // Handle different response formats
   // Backend returns: { total: number, notifications: array }
   if (data?.notifications && Array.isArray(data.notifications)) {
-    return data.notifications.map(normalizeNotification);
+    const mapped = data.notifications.map(normalizeNotification);
+    try {
+      const raw = localStorage.getItem("user");
+      const me = raw ? JSON.parse(raw) : null;
+      const meId = me?.id ?? me?.ID ?? me?.username ?? me?.user_id;
+      if (meId != null) {
+        // no-op: intentionally not logging in production
+        mapped.forEach(() => {});
+      }
+    } catch (e) {}
+    return mapped;
   }
 
   // Fallback: if data is already an array
   if (Array.isArray(data)) {
-    return data.map(normalizeNotification);
+    const mapped = data.map(normalizeNotification);
+    try {
+      const raw = localStorage.getItem("user");
+      const me = raw ? JSON.parse(raw) : null;
+      const meId = me?.id ?? me?.ID ?? me?.username ?? me?.user_id;
+      if (meId != null) {
+        // no-op: intentionally not logging in production
+        mapped.forEach(() => {});
+      }
+    } catch (e) {}
+    return mapped;
   }
 
   // Return empty array if unexpected format
   return [];
+}
+
+/**
+ * Create a notification targeting a user
+ * @param {Object} payload - { user_id, tipe, judul, pesan, tabel_ref, record_id, aset_id }
+ */
+export async function createNotification(payload) {
+  const res = await fetch(`/notification`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+
+  const data = await handleResponse(res);
+  return normalizeNotification(data);
 }
 
 /**

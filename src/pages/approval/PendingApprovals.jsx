@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
 import {
-  FaCheck,
-  FaTimes,
+  FaSyncAlt,
   FaSearch,
   FaFilter,
   FaExclamationCircle,
-  FaSyncAlt,
 } from "react-icons/fa";
 import {
   getPendingApprovals,
@@ -17,11 +15,7 @@ import { updateAset, getAset } from "@/api/aset";
 import ApprovalActions from "@/components/ApprovalActions";
 import RejectModal from "@/components/RejectModal";
 import Alert from "@/components/Alert";
-import { getApprovalStatusClass, getApprovalStatusLabel } from "@/utils/format";
 
-/**
- * Admin-only page to view and manage pending approvals
- */
 export default function PendingApprovals() {
   const [approvals, setApprovals] = useState([]);
   const [filteredApprovals, setFilteredApprovals] = useState([]);
@@ -109,10 +103,7 @@ export default function PendingApprovals() {
             try {
               await updateAset(asetId, { statusAset: "aktif" });
             } catch (e) {
-              console.warn(
-                "Failed to update asset status after perbaikan approve",
-                e
-              );
+              // ignore update failure after perbaikan approve
             }
           }
         }
@@ -171,45 +162,24 @@ export default function PendingApprovals() {
               }
 
               try {
-                // eslint-disable-next-line no-console
-                console.debug("apply-dijual->updateAset", {
-                  asetId,
-                  targetId,
-                  payload,
-                });
                 let res = await updateAset(targetId, payload);
-                // eslint-disable-next-line no-console
-                console.debug("apply-dijual->updateAset:response", res);
               } catch (firstErr) {
                 const composite = findCompositeAsetId(detail);
                 if (composite && composite !== String(targetId)) {
                   try {
-                    console.debug(
-                      "Retrying updateAset with composite AsetId",
-                      composite
-                    );
                     const res2 = await updateAset(composite, payload);
-                    // eslint-disable-next-line no-console
-                    console.debug("apply-dijual->updateAset:response", res2);
-                  } catch (secondErr) {
-                    console.warn(
-                      "Failed to apply dijual to asset:",
-                      secondErr || firstErr
-                    );
-                  }
+                  } catch (secondErr) {}
                 } else {
-                  console.warn("Failed to apply dijual to asset:", firstErr);
                 }
               }
             } else {
-              console.debug("apply-dijual: missing asetId", { detail });
             }
           } catch (e) {
-            console.warn("Failed to process dijual post-approve:", e);
+            // ignore dijual post-approve errors
           }
         }
       } catch (e) {
-        console.warn("Post-approve hook failed:", e);
+        // ignore post-approve hook errors
       }
       setSuccess(`${record.tabel_ref} berhasil disetujui`);
       // Remove from list

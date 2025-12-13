@@ -160,7 +160,7 @@ export default function User({ user, sessionUser, onLogout }) {
         const assetId = created?.asetId || created?.id || finalPayload.asetId;
 
         if (!assetId) {
-          console.error("No asset ID found for image upload");
+          // no asset id for image upload — notify user silently
           setAlert({
             type: "warning",
             message:
@@ -175,7 +175,7 @@ export default function User({ user, sessionUser, onLogout }) {
               created.gambar = uploadResult.gambar;
             }
           } catch (uploadErr) {
-            console.error("Image upload failed:", uploadErr);
+            // image upload failed — show warning
             setAlert({
               type: "warning",
               message: `Aset berhasil ditambahkan tetapi upload gambar gagal: ${
@@ -354,7 +354,7 @@ export default function User({ user, sessionUser, onLogout }) {
       const data = await listBeban();
       setBebanList(data || []);
     } catch (err) {
-      console.error("Failed to load beban list:", err);
+      // ignore
       setBebanList([]);
     }
   };
@@ -364,7 +364,7 @@ export default function User({ user, sessionUser, onLogout }) {
       const data = await listDepartemen();
       setDepartemenList(data || []);
     } catch (err) {
-      console.error("Failed to load departemen list:", err);
+      // ignore
       setDepartemenList([]);
     }
   };

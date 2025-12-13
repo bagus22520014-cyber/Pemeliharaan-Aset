@@ -29,7 +29,7 @@ export default function Dashboard() {
       const data = await listAset({ includeBebanHeader: false });
       setAssets(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Error loading dashboard data:", err);
+      // ignore dashboard load errors
     } finally {
       setLoading(false);
     }

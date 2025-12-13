@@ -249,7 +249,7 @@ export default function AssetDetail({
         onClose?.();
       }, 1500);
     } catch (error) {
-      console.error("Approval failed:", error);
+      // approval failed — show alert
       setApprovalAlert({
         type: "error",
         message: "Gagal menyetujui aset: " + error.message,
@@ -298,7 +298,7 @@ export default function AssetDetail({
         onClose?.();
       }, 1500);
     } catch (error) {
-      console.error("Rejection failed:", error);
+      // rejection failed — show alert
       setApprovalAlert({
         type: "error",
         message: "Gagal menolak aset: " + error.message,

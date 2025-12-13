@@ -67,7 +67,7 @@ export default function UserManagement() {
       const aktif = (Array.isArray(all) ? all : []).filter((b) => b.aktif);
       setBebans(aktif);
     } catch (err) {
-      console.error("Gagal memuat beban:", err);
+      // failed to load beban — ignore silently
     }
   };
 

@@ -22,7 +22,7 @@ export function generateBarcode(text, options = {}) {
     });
     return canvas.toDataURL("image/png");
   } catch (err) {
-    console.error("Barcode generation error:", err);
+    // Barcode generation failed — return empty string silently
     return "";
   }
 }

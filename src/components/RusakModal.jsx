@@ -54,7 +54,7 @@ export default function RusakModal({
       try {
         await updateAset(asetId, { statusAset: "rusak" });
       } catch (e) {
-        console.warn("Failed to update asset status to rusak:", e);
+        // ignore update failure
       }
 
       // Reset form

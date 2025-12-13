@@ -76,7 +76,7 @@ export default function DijualModal({
         if (isAdmin) updatePayload.nilaiAset = 0;
         await updateAset(asetId, updatePayload);
       } catch (e) {
-        console.warn("Failed to update asset status to dijual:", e);
+        // ignore update failure
       }
 
       // Reset form

@@ -38,7 +38,7 @@ export default function MutasiModal({
           const data = await listDepartemen();
           setDepartemenList(data || []);
         } catch (err) {
-          console.error("Failed to load departemen:", err);
+          // ignore
         }
       };
       loadDepartemen();
@@ -141,7 +141,7 @@ export default function MutasiModal({
         try {
           await updateAset(asetId, updatePayload);
         } catch (updateErr) {
-          console.error("Failed to update asset after mutasi:", updateErr);
+          // ignore update failure
           // Continue anyway, mutasi sudah berhasil disimpan
         }
       }

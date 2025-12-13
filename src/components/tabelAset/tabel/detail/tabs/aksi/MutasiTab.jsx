@@ -21,7 +21,7 @@ export default function MutasiTab({
         const data = await listDepartemen();
         setDepartemenList(data || []);
       } catch (err) {
-        console.error("Failed to load departemen:", err);
+        // ignore
       }
     };
     loadDepartemen();

@@ -202,7 +202,6 @@ export function useTabAksi(
       if (type === "perbaikan") {
         created = await createPerbaikan(asetId, {
           tanggal_perbaikan: repairForm.tanggal_perbaikan,
-          deskripsi: repairForm.deskripsi,
           biaya: repairForm.biaya ? parseFloat(repairForm.biaya) : null,
           teknisi: repairForm.teknisi,
         });
@@ -328,8 +327,7 @@ export function useTabAksi(
               onUpdated(updatedAsset);
             }
           } catch (updateErr) {
-            console.error("Failed to update asset after mutasi:", updateErr);
-            // Continue anyway, mutasi sudah berhasil disimpan
+            // ignore update failure — mutasi already saved
           }
         }
 
@@ -354,7 +352,7 @@ export function useTabAksi(
         try {
           onUpdated({ ...asset, statusAset: newStatus });
         } catch (e) {
-          console.warn("onUpdated callback failed when updating status:", e);
+          // ignore callback errors
         }
       }
 
@@ -371,7 +369,6 @@ export function useTabAksi(
         // ignore
       }
     } catch (err) {
-      console.error(`Error creating ${type}:`, err);
       setError(`Gagal menambahkan data: ${err.message || err}`);
     } finally {
       setLoading(false);

@@ -24,9 +24,7 @@ export default function Navbar({
   // Fetch notifications
   const fetchNotifications = async () => {
     try {
-      console.log("Fetching notifications...");
       const data = await listNotifications();
-      console.log("Notifications received:", data);
 
       // Backend returns { total, notifications } not direct array
       const notifArray = Array.isArray(data)
@@ -35,16 +33,10 @@ export default function Navbar({
         ? data.notifications
         : [];
 
-      console.log("Parsed notifications array:", notifArray);
-
       // Filter: only show approval type notifications (exclude approved/rejected)
       // This ensures notifications that should be deleted by backend don't show up
       const approvalOnlyNotifications = notifArray.filter(
         (n) => n.tipe === "approval"
-      );
-
-      console.log(
-        `Filtered notifications: ${notifArray.length} total, ${approvalOnlyNotifications.length} approval type`
       );
 
       // Exclude locally-hidden notification IDs (persisted by NotificationPanel)
@@ -82,11 +74,6 @@ export default function Navbar({
             return n;
           } catch (err) {
             // If detail fetch fails, keep the notification (avoid hiding on network errors)
-            console.warn(
-              "Failed to fetch approval detail for notification",
-              n.id,
-              err
-            );
             return n;
           }
         })
@@ -98,25 +85,19 @@ export default function Navbar({
       // Try to get unread count from API, fallback to calculating from notifications
       try {
         const count = await getUnreadCount();
-        console.log("Unread count from API:", count);
         // Only count approval type notifications
         const approvalUnreadCount = visibleNotifications.filter(
           (n) => !n.is_read && !n.IsRead
         ).length;
         setUnreadCount(approvalUnreadCount);
       } catch (countErr) {
-        console.log(
-          "Unread count endpoint failed, calculating from notifications"
-        );
         const unread = visibleNotifications.filter(
           (n) => !n.is_read && !n.IsRead
         ).length;
-        console.log("Calculated unread count:", unread);
         setUnreadCount(unread);
       }
     } catch (err) {
-      console.error("Failed to fetch notifications:", err);
-      console.log("Using fallback dummy notifications for testing");
+      // fallback to dummy notifications when backend fails
       // Fallback: Use dummy notifications if backend not ready
       const dummyNotifications = [
         {

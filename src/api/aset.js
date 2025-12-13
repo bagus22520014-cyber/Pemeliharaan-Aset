@@ -266,13 +266,7 @@ export async function updateAset(id, payload) {
   const encoded = encodeURIComponent(String(id));
   // Temporary debug: show outgoing update request to help diagnose server issues
   try {
-    // eslint-disable-next-line no-console
-    console.debug(
-      "updateAset -> URL:",
-      `${BASE}/${encoded}`,
-      "payload:",
-      JSON.stringify(toServerAset(cleanPayload(payload)))
-    );
+    // debug removed
   } catch {}
   const res = await fetch(`${BASE}/${encoded}`, {
     method: "PUT",
@@ -282,8 +276,7 @@ export async function updateAset(id, payload) {
   });
   const data = await handleResponse(res);
   try {
-    // eslint-disable-next-line no-console
-    console.debug("updateAset -> response:", res.status, data);
+    // debug removed
   } catch {}
   // debug logging removed for production
   return normalizeAset(data);
