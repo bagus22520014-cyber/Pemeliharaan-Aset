@@ -11,6 +11,7 @@ import {
   rejectRecord,
   getApprovalDetail,
 } from "@/api/approval";
+import { createNotification } from "@/api/notification";
 import { updateAset, getAset } from "@/api/aset";
 import ApprovalActions from "@/components/ApprovalActions";
 import RejectModal from "@/components/RejectModal";
@@ -182,6 +183,44 @@ export default function PendingApprovals() {
         // ignore post-approve hook errors
       }
       setSuccess(`${record.tabel_ref} berhasil disetujui`);
+      // Notify submitter (best-effort)
+      try {
+        const detail = await getApprovalDetail(
+          record.tabel_ref,
+          record.record_id
+        );
+        const submitter =
+          detail?.created_by ||
+          detail?.createdBy ||
+          detail?.user_id ||
+          detail?.UserId ||
+          null;
+        if (submitter) {
+          const typeLabel =
+            typeLabels[String(record.tabel_ref || "").toLowerCase()] ||
+            record.tabel_ref;
+          const judul = `${typeLabel} Disetujui`;
+          const pesan = `Permintaan ${typeLabel} untuk ${
+            detail?.asetId || detail?.AsetId || detail?.aset_id || "aset"
+          } telah disetujui.`;
+          try {
+            await createNotification({
+              user_id: submitter,
+              tipe: "approved",
+              judul,
+              pesan,
+              tabel_ref: record.tabel_ref,
+              record_id: record.record_id,
+              aset_id:
+                detail?.asetId || detail?.AsetId || detail?.aset_id || null,
+            });
+          } catch (e) {
+            /* ignore notification creation errors */
+          }
+        }
+      } catch (e) {
+        /* ignore */
+      }
       // Remove from list
       setApprovals((prev) =>
         prev.filter(
@@ -212,6 +251,44 @@ export default function PendingApprovals() {
       setError("");
       await rejectRecord(record.tabel_ref, record.record_id, alasan);
       setSuccess(`${record.tabel_ref} berhasil ditolak`);
+      // Notify submitter about rejection (best-effort)
+      try {
+        const detail = await getApprovalDetail(
+          record.tabel_ref,
+          record.record_id
+        );
+        const submitter =
+          detail?.created_by ||
+          detail?.createdBy ||
+          detail?.user_id ||
+          detail?.UserId ||
+          null;
+        if (submitter) {
+          const typeLabel =
+            typeLabels[String(record.tabel_ref || "").toLowerCase()] ||
+            record.tabel_ref;
+          const judul = `${typeLabel} Ditolak`;
+          const pesan = `Permintaan ${typeLabel} untuk ${
+            detail?.asetId || detail?.AsetId || detail?.aset_id || "aset"
+          } ditolak.`;
+          try {
+            await createNotification({
+              user_id: submitter,
+              tipe: "rejected",
+              judul,
+              pesan,
+              tabel_ref: record.tabel_ref,
+              record_id: record.record_id,
+              aset_id:
+                detail?.asetId || detail?.AsetId || detail?.aset_id || null,
+            });
+          } catch (e) {
+            /* ignore */
+          }
+        }
+      } catch (e) {
+        /* ignore */
+      }
       // Remove from list
       setApprovals((prev) =>
         prev.filter(

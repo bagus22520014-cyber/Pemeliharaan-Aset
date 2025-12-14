@@ -26,6 +26,7 @@ export default function NotificationPanel({
   notifications = [],
   onClose,
   onRefresh,
+  asPage = false,
 }) {
   const navigate = useNavigate();
   const panelRef = useRef(null);
@@ -132,9 +133,36 @@ export default function NotificationPanel({
         notification.record_id ||
         notification.RecordId;
       if (assetIdCandidate) {
-        navigate(
-          `/aset/daftar?highlight=${encodeURIComponent(assetIdCandidate)}`
-        );
+        // Navigate to list first so the page mounts, then dispatch events so the
+        // Daftar Aset page can highlight and open the detail (like admin UX).
+        try {
+          navigate("/aset/daftar");
+        } catch (e) {
+          /* ignore navigation errors */
+        }
+
+        // Delay dispatch so the destination component has a chance to mount and
+        // register event listeners. Dispatch both highlight and open events.
+        setTimeout(() => {
+          try {
+            window.dispatchEvent(
+              new CustomEvent("asset:highlight", {
+                detail: { assetId: assetIdCandidate },
+              })
+            );
+          } catch (e) {
+            /* ignore */
+          }
+          try {
+            window.dispatchEvent(
+              new CustomEvent("asset:open", {
+                detail: { assetId: assetIdCandidate, openTab: "riwayat" },
+              })
+            );
+          } catch (e) {
+            /* ignore */
+          }
+        }, 120);
       } else if (notification.tipe === "approval") {
         navigate("/approval/pending");
       } else {
@@ -458,12 +486,37 @@ export default function NotificationPanel({
 
   // Map of notification.id -> { name, asetId }
   const [notifNames, setNotifNames] = useState({});
+  // Only show notifications relevant to the current user (unless admin)
+  let me = null;
+  try {
+    const raw = localStorage.getItem("user");
+    me = raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    me = null;
+  }
+  const meId =
+    me?.id ?? me?.ID ?? me?.user_id ?? me?.userId ?? me?.username ?? null;
+  const meRole = me?.role ?? me?.Role ?? null;
 
-  // Filter out hidden notifications and already processed approvals
-  // Only show notifications with tipe 'approval' (diajukan) and not hidden
-  const visibleNotifications = notifications.filter((n) => {
+  const userFilteredNotifications = (() => {
+    if (!meId || String(meRole).toLowerCase() === "admin") return notifications;
+    return notifications.filter((n) => {
+      return (
+        n?.user_id == meId ||
+        n?.UserId == meId ||
+        n?.userId == meId ||
+        n?.recipient_id == meId ||
+        n?.to_user_id == meId ||
+        n?.penerima == meId ||
+        n?.penerima_id == meId
+      );
+    });
+  })();
+
+  // Filter out locally-hidden notifications
+  const visibleNotifications = userFilteredNotifications.filter((n) => {
     if (hiddenIds.has(n.id)) return false;
-    return n.tipe === "approval";
+    return true;
   });
   const unreadCount = visibleNotifications.filter((n) => !n.is_read).length;
 
@@ -547,11 +600,15 @@ export default function NotificationPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleNotifications]);
 
+  const containerClass = asPage
+    ? "mx-auto mt-6 w-full md:w-96 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden"
+    : "absolute right-0 top-full mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50";
+
   return (
     <div
       ref={panelRef}
-      className="absolute right-0 top-full mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50"
-      role="menu"
+      className={containerClass}
+      role={asPage ? "region" : "menu"}
       aria-orientation="vertical"
     >
       {/* Header */}
@@ -668,17 +725,21 @@ export default function NotificationPanel({
         )}
       </div>
 
-      {/* Footer */}
+      {/* Footer (show in both dropdown and page for consistent structure) */}
       {visibleNotifications.length > 0 && (
         <div className="px-4 py-2 border-t border-gray-200 bg-gray-50 text-center">
           <button
             onClick={() => {
-              navigate("/notifications");
-              onClose?.();
+              if (!asPage) {
+                navigate("/notifications");
+                onClose?.();
+              } else {
+                onRefresh?.();
+              }
             }}
             className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
           >
-            Lihat Semua Notifikasi
+            {!asPage ? "Lihat Semua Notifikasi" : "Segarkan Notifikasi"}
           </button>
         </div>
       )}

@@ -285,6 +285,38 @@ export default function TabRiwayat({ asetId, onClose }) {
     return <RecordDetail item={item} recordDetails={recordDetails} />;
   };
 
+  // compute total biaya for approved perbaikan
+  const totalApprovedPerbaikan = history.reduce((acc, item) => {
+    const tabelRef = item.tabelRef || item.tabel_ref;
+    if (!tabelRef || String(tabelRef).toLowerCase() !== "perbaikan") return acc;
+    const recordId = item.recordId || item.record_id;
+    const key = `${tabelRef}-${recordId}`;
+
+    const detail = recordDetails[key] || {};
+
+    const approval = (
+      (item.approval_status ||
+        item.ApprovalStatus ||
+        detail.approval_status ||
+        detail.ApprovalStatus ||
+        "") + ""
+    ).toLowerCase();
+
+    if (approval !== "disetujui" && approval !== "approved") return acc;
+
+    const maybeBiaya =
+      item.biaya ||
+      item.Biaya ||
+      detail.biaya ||
+      detail.Biaya ||
+      detail.BiayaPerbaikan ||
+      detail.biaya_perbaikan ||
+      0;
+
+    const value = Number(String(maybeBiaya).replace(/[^0-9.-]+/g, "")) || 0;
+    return acc + value;
+  }, 0);
+
   const scrollToSection = (year, month) => {
     const elementId =
       month !== null ? `month-${year}-${month}` : `year-${year}`;
@@ -421,6 +453,14 @@ export default function TabRiwayat({ asetId, onClose }) {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Fixed Footer - stays below the scrollable content */}
+        <div className="flex-none bg-white p-4 flex justify-end items-center gap-4">
+          <div className="text-sm text-gray-600">Total biaya perbaikan:</div>
+          <div className="text-lg font-semibold text-gray-800">
+            Rp {totalApprovedPerbaikan.toLocaleString("id-ID")}
           </div>
         </div>
       </div>

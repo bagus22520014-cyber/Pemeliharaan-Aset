@@ -47,6 +47,7 @@ export default function Admin({ user, onLogout, sessionUser }) {
   // Inline editing removed — only create is supported
   const tableRef = useRef(null);
   const [detailAsset, setDetailAsset] = useState(null);
+  const [detailInitialTab, setDetailInitialTab] = useState(null);
   const [highlightedAsset, setHighlightedAsset] = useState(null);
   const [form, setForm] = useState({
     asetId: "",
@@ -196,6 +197,80 @@ export default function Admin({ user, onLogout, sessionUser }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assets, searchParams.get("highlight")]);
+
+  // Listen for global asset events (from NotificationPanel)
+  useEffect(() => {
+    let mounted = true;
+
+    const openAssetById = async (assetId, openTab = null) => {
+      if (!assetId || !mounted) return;
+      // try to find in current assets
+      let found = assets.find(
+        (a) =>
+          String(a.asetId) === String(assetId) ||
+          String(a.id) === String(assetId)
+      );
+      if (!found) {
+        try {
+          const data = await listAset({ includeBebanHeader: false });
+          const list = Array.isArray(data) ? data : data?.items ?? [];
+          found = list.find(
+            (a) =>
+              String(a.asetId) === String(assetId) ||
+              String(a.id) === String(assetId)
+          );
+          // if found and current assets don't include it, insert at top
+          if (found) {
+            setAssets((prev) => {
+              const exists = prev.some(
+                (p) =>
+                  String(p.asetId ?? p.id) === String(found.asetId ?? found.id)
+              );
+              if (exists) return prev;
+              return [found, ...prev];
+            });
+          }
+        } catch (err) {
+          // ignore
+        }
+      }
+
+      if (found) {
+        setHighlightedAsset(String(assetId));
+        setDetailInitialTab(openTab || null);
+        setDetailAsset(found);
+        // ensure table navigates to item
+        try {
+          tableRef.current?.goToAsset?.(found.asetId ?? found.id, {
+            highlight: "bg",
+          });
+        } catch (e) {
+          /* ignore */
+        }
+      }
+    };
+
+    const onHighlight = (e) => {
+      const id = e?.detail?.assetId;
+      const openTab = e?.detail?.openTab ?? null;
+      if (id) openAssetById(id, openTab);
+    };
+    const onOpen = (e) => {
+      const id = e?.detail?.assetId;
+      const openTab = e?.detail?.openTab ?? null;
+      if (id) openAssetById(id, openTab);
+    };
+
+    window.addEventListener("asset:highlight", onHighlight);
+    window.addEventListener("asset:open", onOpen);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener("asset:highlight", onHighlight);
+      window.removeEventListener("asset:open", onOpen);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assets]);
 
   useEffect(() => {
     // Re-load assets and beban when sessionUser changes
@@ -628,7 +703,11 @@ export default function Admin({ user, onLogout, sessionUser }) {
             {detailAsset && (
               <AssetDetail
                 asset={detailAsset}
-                onClose={() => setDetailAsset(null)}
+                initialTab={detailInitialTab}
+                onClose={() => {
+                  setDetailAsset(null);
+                  setDetailInitialTab(null);
+                }}
                 userRole="admin"
                 groups={GROUPS}
                 bebans={bebanOptions}

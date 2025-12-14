@@ -140,11 +140,25 @@ export async function listNotifications(onlyUnread = false) {
  * @param {Object} payload - { user_id, tipe, judul, pesan, tabel_ref, record_id, aset_id }
  */
 export async function createNotification(payload) {
+  // Normalize client payload keys to backend expectations
+  const body = {
+    // prefer explicit server-side keys, fall back to local variants
+    user_id: payload.user_id ?? payload.UserId ?? payload.userId ?? null,
+    type: payload.type ?? payload.tipe ?? payload.Tipe ?? "info",
+    judul: payload.judul ?? payload.Judul ?? payload.title ?? null,
+    pesan: payload.pesan ?? payload.Pesan ?? payload.message ?? null,
+    tabel_ref: payload.tabel_ref ?? payload.TabelRef ?? payload.table ?? null,
+    record_id:
+      payload.record_id ?? payload.RecordId ?? payload.recordId ?? null,
+    AsetId: payload.AsetId ?? payload.aset_id ?? payload.asetId ?? null,
+    beban: payload.beban ?? null,
+  };
+
   const res = await fetch(`/notification`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...getAuthHeaders() },
     credentials: "include",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
 
   const data = await handleResponse(res);

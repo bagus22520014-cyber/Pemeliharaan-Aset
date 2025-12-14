@@ -33,12 +33,32 @@ export default function Navbar({
         ? data.notifications
         : [];
 
-      // Filter: only show approval type notifications (exclude approved/rejected)
-      // This ensures notifications that should be deleted by backend don't show up
-      const approvalOnlyNotifications = notifArray.filter(
-        (n) => n.tipe === "approval"
-      );
+      // Get current user id from localStorage to filter notifications for this user
+      let me = null;
+      try {
+        const raw = localStorage.getItem("user");
+        me = raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        me = null;
+      }
+      const meId =
+        me?.id ?? me?.ID ?? me?.user_id ?? me?.userId ?? me?.username ?? null;
 
+      // Filter notifications intended for this user (if we know the user), otherwise keep all
+      const userNotifications = notifArray.filter((n) => {
+        if (!meId) return true;
+        return (
+          n?.user_id == meId ||
+          n?.UserId == meId ||
+          n?.userId == meId ||
+          n?.recipient_id == meId ||
+          n?.to_user_id == meId ||
+          n?.penerima == meId ||
+          n?.penerima_id == meId
+        );
+      });
+
+      // Preserve approval-specific validation (remove stale approval notifications)
       // Exclude locally-hidden notification IDs (persisted by NotificationPanel)
       let hiddenIds = [];
       try {
@@ -47,11 +67,12 @@ export default function Navbar({
       } catch (err) {
         hiddenIds = [];
       }
-
       const hiddenSet = new Set(hiddenIds);
 
-      // Validate approval_status for each approval notification by querying approval detail.
-      // If the record is no longer 'diajukan', exclude it (backend may not have cleaned up notification).
+      const approvalOnlyNotifications = userNotifications.filter(
+        (n) => n.tipe === "approval"
+      );
+
       const validated = await Promise.all(
         approvalOnlyNotifications.map(async (n) => {
           if (hiddenSet.has(n.id)) return null;
@@ -62,40 +83,30 @@ export default function Navbar({
               n.tabel_ref,
               encodeURIComponent(n.record_id)
             );
-            // detail may be normalized; check approval_status
             const status =
               detail?.approval_status ||
               detail?.approvalStatus ||
               detail?.status;
             if (status && String(status).toLowerCase() !== "diajukan") {
-              // Already processed
               return null;
             }
             return n;
           } catch (err) {
-            // If detail fetch fails, keep the notification (avoid hiding on network errors)
             return n;
           }
         })
       );
 
-      const visibleNotifications = validated.filter(Boolean);
-      setNotifications(visibleNotifications);
+      const visibleValidatedApprovals = validated.filter(Boolean);
 
-      // Try to get unread count from API, fallback to calculating from notifications
-      try {
-        const count = await getUnreadCount();
-        // Only count approval type notifications
-        const approvalUnreadCount = visibleNotifications.filter(
-          (n) => !n.is_read && !n.IsRead
-        ).length;
-        setUnreadCount(approvalUnreadCount);
-      } catch (countErr) {
-        const unread = visibleNotifications.filter(
-          (n) => !n.is_read && !n.IsRead
-        ).length;
-        setUnreadCount(unread);
-      }
+      // Pass the full notification array to the panel (panel will filter/hide as needed)
+      setNotifications(notifArray);
+
+      // Compute unread count for this user across all types (important for non-admin users)
+      const unreadForUser = userNotifications.filter(
+        (n) => !n.is_read && !n.IsRead
+      ).length;
+      setUnreadCount(unreadForUser);
     } catch (err) {
       // fallback to dummy notifications when backend fails
       // Fallback: Use dummy notifications if backend not ready
@@ -194,8 +205,60 @@ export default function Navbar({
         {/* NOTIFICATION BELL + Manual Refresh */}
         <div className="relative flex items-center" ref={notificationRef}>
           <button
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation();
+              // Fetch notifications and show only those for current user
+              try {
+                const data = await listNotifications();
+                // Normalize array payload
+                const notifArray = Array.isArray(data)
+                  ? data
+                  : Array.isArray(data?.notifications)
+                  ? data.notifications
+                  : [];
+
+                // Get current user id from localStorage
+                let me = null;
+                try {
+                  const raw = localStorage.getItem("user");
+                  me = raw ? JSON.parse(raw) : null;
+                } catch (e) {
+                  me = null;
+                }
+                const meId =
+                  me?.id ??
+                  me?.ID ??
+                  me?.user_id ??
+                  me?.userId ??
+                  me?.username ??
+                  null;
+
+                const matches = notifArray.filter((n) => {
+                  if (!meId) return true; // if we don't know me, return all
+                  // check common recipient keys
+                  return (
+                    n?.user_id == meId ||
+                    n?.UserId == meId ||
+                    n?.userId == meId ||
+                    n?.recipient_id == meId ||
+                    n?.to_user_id == meId ||
+                    n?.penerima == meId ||
+                    n?.penerima_id == meId
+                  );
+                });
+
+                try {
+                  console.log("notifications (filtered):", matches);
+                } catch (logErr) {
+                  /* ignore */
+                }
+              } catch (err) {
+                try {
+                  console.error("Failed to fetch notifications:", err);
+                } catch (logErr) {
+                  /* ignore */
+                }
+              }
               setNotificationOpen((s) => !s);
             }}
             className="relative p-2 rounded-lg hover:bg-gray-100 transition text-gray-700"

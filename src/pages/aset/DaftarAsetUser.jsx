@@ -53,6 +53,7 @@ export default function User({ user, sessionUser, onLogout }) {
   const [logoutConfirm, setLogoutConfirm] = useState(false);
   const tableRef = useRef(null);
   const [detailAsset, setDetailAsset] = useState(null);
+  const [detailInitialTab, setDetailInitialTab] = useState(null);
   const [confirmCreate, setConfirmCreate] = useState(false);
   const [pendingFile, setPendingFile] = useState(null);
   // Scan control moved into SearchFilterBar
@@ -86,6 +87,74 @@ export default function User({ user, sessionUser, onLogout }) {
       })();
     }
   }, [showCreate, suggestedAsetId]);
+
+  // Listen for asset events from notifications (user view)
+  useEffect(() => {
+    let mounted = true;
+
+    const openAssetById = async (assetId, openTab = null) => {
+      if (!assetId || !mounted) return;
+      let found = assets.find(
+        (a) =>
+          String(a.asetId) === String(assetId) ||
+          String(a.id) === String(assetId)
+      );
+      if (!found) {
+        try {
+          const data = await listAset({ includeBebanHeader: false });
+          const list = Array.isArray(data) ? data : data?.items ?? [];
+          found = list.find(
+            (a) =>
+              String(a.asetId) === String(assetId) ||
+              String(a.id) === String(assetId)
+          );
+          if (found) {
+            setAssets((prev) => {
+              const exists = prev.some(
+                (p) =>
+                  String(p.asetId ?? p.id) === String(found.asetId ?? found.id)
+              );
+              if (exists) return prev;
+              return [found, ...prev];
+            });
+          }
+        } catch (err) {
+          // ignore
+        }
+      }
+      if (found) {
+        setDetailInitialTab(openTab || null);
+        setDetailAsset(found);
+        try {
+          tableRef.current?.goToAsset?.(found.asetId ?? found.id, {
+            highlight: "bg",
+          });
+        } catch (e) {
+          /* ignore */
+        }
+      }
+    };
+
+    const onHighlight = (e) => {
+      const id = e?.detail?.assetId;
+      const openTab = e?.detail?.openTab ?? null;
+      if (id) openAssetById(id, openTab);
+    };
+    const onOpen = (e) => {
+      const id = e?.detail?.assetId;
+      const openTab = e?.detail?.openTab ?? null;
+      if (id) openAssetById(id, openTab);
+    };
+
+    window.addEventListener("asset:highlight", onHighlight);
+    window.addEventListener("asset:open", onOpen);
+    return () => {
+      mounted = false;
+      window.removeEventListener("asset:highlight", onHighlight);
+      window.removeEventListener("asset:open", onOpen);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assets]);
 
   const resetForm = () =>
     setForm((prev) => ({
@@ -689,7 +758,11 @@ export default function User({ user, sessionUser, onLogout }) {
               {detailAsset && (
                 <AssetDetail
                   asset={detailAsset}
-                  onClose={() => setDetailAsset(null)}
+                  initialTab={detailInitialTab}
+                  onClose={() => {
+                    setDetailAsset(null);
+                    setDetailInitialTab(null);
+                  }}
                   userRole="user"
                   groups={GROUPS}
                   bebans={bebanOptions}

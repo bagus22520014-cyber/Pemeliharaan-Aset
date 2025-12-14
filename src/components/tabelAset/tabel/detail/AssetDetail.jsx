@@ -15,6 +15,7 @@ import Alert from "@/components/Alert";
 
 export default function AssetDetail({
   asset,
+  initialTab = null,
   onClose,
   onUpdated,
   userRole = "user",
@@ -59,7 +60,12 @@ export default function AssetDetail({
     handleUpdateSubmit,
   } = useAssetDetail({ asset, onUpdated });
 
-  const [activeTab, setActiveTab] = useState("detail"); // detail, riwayat, aksi
+  const [activeTab, setActiveTab] = useState(initialTab || "detail"); // detail, riwayat, aksi
+
+  // Update activeTab if parent requests a different initialTab after mount
+  React.useEffect(() => {
+    if (initialTab) setActiveTab(initialTab);
+  }, [initialTab]);
   const [rejectModal, setRejectModal] = useState(false);
   const [approvalLoading, setApprovalLoading] = useState(false);
   const [approvalAlert, setApprovalAlert] = useState(null);
