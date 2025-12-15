@@ -223,26 +223,38 @@ export default function TabRiwayat({ asetId, onClose }) {
                   headers["x-username"] = String(user.username);
 
                 try {
-                  const resp = await fetch(`/aset?AsetId=${q}`, {
-                    credentials: "include",
-                    headers,
-                  });
-                  if (resp.ok) {
-                    let d = await resp.json();
-                    // Normalize array responses
-                    if (Array.isArray(d)) {
-                      let match = d.find(
-                        (x) =>
-                          String(x.id) === String(recordId) ||
-                          String(x.AsetId) === String(asetKey)
-                      );
-                      if (!match && d.length === 1) match = d[0];
-                      d = match || null;
+                  // Prefer newer copy table endpoint when available
+                  const tryEndpoints = [
+                    `/aset_copy?AsetId=${q}`,
+                    `/aset?AsetId=${q}`,
+                  ];
+                  let found = null;
+                  for (const url of tryEndpoints) {
+                    try {
+                      const resp = await fetch(url, {
+                        credentials: "include",
+                        headers,
+                      });
+                      if (!resp.ok) continue;
+                      let d = await resp.json();
+                      if (Array.isArray(d)) {
+                        let match = d.find(
+                          (x) =>
+                            String(x.id) === String(recordId) ||
+                            String(x.AsetId) === String(asetKey)
+                        );
+                        if (!match && d.length === 1) match = d[0];
+                        d = match || null;
+                      }
+                      if (d) {
+                        found = d;
+                        break;
+                      }
+                    } catch (e) {
+                      // try next endpoint
                     }
-                    detail = d;
-                  } else {
-                    // backend returned non-ok for aset lookup by AsetId
                   }
+                  detail = found;
                 } catch (err) {
                   // ignore lookup error
                 }

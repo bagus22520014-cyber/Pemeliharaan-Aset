@@ -220,6 +220,23 @@ export async function listAset(opts = { includeBebanHeader: true }) {
   return normalizeAset(data);
 }
 
+const BASE_COPY = "/aset_copy";
+
+export async function listAsetCopy(opts = { includeBebanHeader: true }) {
+  const headers = getAuthHeaders();
+  if (opts && opts.includeBebanHeader === false) {
+    if (headers && headers["x-beban"]) delete headers["x-beban"];
+  }
+  const res = await fetch(BASE_COPY, {
+    credentials: "include",
+    headers,
+  });
+  const data = await handleResponse(res);
+  if (Array.isArray(data)) return data.map(normalizeAset);
+  if (Array.isArray(data?.items)) return data.items.map(normalizeAset);
+  return normalizeAset(data);
+}
+
 export async function getAset(id, opts = { includeBebanHeader: true }) {
   if (!id) return null;
   const encoded = encodeURIComponent(String(id));
@@ -228,6 +245,21 @@ export async function getAset(id, opts = { includeBebanHeader: true }) {
     if (headers && headers["x-beban"]) delete headers["x-beban"];
   }
   const res = await fetch(`${BASE}/${encoded}`, {
+    credentials: "include",
+    headers,
+  });
+  const data = await handleResponse(res);
+  return normalizeAset(data);
+}
+
+export async function getAsetCopy(id, opts = { includeBebanHeader: true }) {
+  if (!id) return null;
+  const encoded = encodeURIComponent(String(id));
+  const headers = getAuthHeaders();
+  if (opts && opts.includeBebanHeader === false) {
+    if (headers && headers["x-beban"]) delete headers["x-beban"];
+  }
+  const res = await fetch(`${BASE_COPY}/${encoded}`, {
     credentials: "include",
     headers,
   });

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { FaDatabase, FaHistory } from "react-icons/fa";
 import ToolsButton from "./ToolsButton";
 import TabRiwayat from "./tabs/riwayat/TabRiwayat";
 import TabAksi from "./tabs/aksi/TabAksi";
@@ -58,6 +59,8 @@ export default function AssetDetail({
     handleCancelEdit,
     handleUpdateRequest,
     handleUpdateSubmit,
+    dataSource,
+    setDataSource,
   } = useAssetDetail({ asset, onUpdated });
 
   const [activeTab, setActiveTab] = useState(initialTab || "detail"); // detail, riwayat, aksi
@@ -91,9 +94,12 @@ export default function AssetDetail({
       String(approvalStatus).toLowerCase() === "diajukan" &&
       !isAdmin) ||
     (hasPendingTransactions && !isAdmin) ||
-    String(assetStatus || "").toLowerCase() === "dijual";
+    String(assetStatus || "").toLowerCase() === "dijual" ||
+    dataSource === "aset_copy";
 
   const getDisableMessage = () => {
+    if (dataSource === "aset_copy")
+      return "Aksi dinonaktifkan: melihat data awal (read-only).";
     const s = String(assetStatus || "").toLowerCase();
     if (s === "dijual") return "Aksi dinonaktifkan: aset telah dijual.";
     if (isRejected) return "Aksi dinonaktifkan: aset telah ditolak.";
@@ -115,6 +121,20 @@ export default function AssetDetail({
       setActiveTab("riwayat");
     }
   }, [disableAksi, activeTab]);
+
+  // If user switches to the original-data source, cancel any active edit mode
+  React.useEffect(() => {
+    if (dataSource === "aset_copy") {
+      // cancel edit when viewing read-only original data
+      try {
+        if (isEditMode) handleCancelEdit();
+      } catch (e) {}
+      // if currently on aksi tab, switch to riwayat since aksi is read-only
+      try {
+        if (activeTab === "aksi") setActiveTab("riwayat");
+      } catch (e) {}
+    }
+  }, [dataSource, isEditMode, handleCancelEdit]);
 
   // If asset is already sold, disable actions and editing for everyone
   if (String(assetStatus || "").toLowerCase() === "dijual") {
@@ -210,6 +230,23 @@ export default function AssetDetail({
     }
     setActiveTab("aksi");
   };
+
+  // Always default to current `aset` when opening detail or switching to the Detail tab
+  React.useEffect(() => {
+    if (asset) {
+      try {
+        setDataSource("aset");
+      } catch (e) {}
+    }
+  }, [asset, setDataSource]);
+
+  React.useEffect(() => {
+    if (activeTab === "detail") {
+      try {
+        setDataSource("aset");
+      } catch (e) {}
+    }
+  }, [activeTab, setDataSource]);
 
   const handleApprove = async () => {
     if (!canApprove) return;
@@ -363,24 +400,36 @@ export default function AssetDetail({
                 akun={akun}
                 noBackdrop={true}
                 isEditing={isEditMode}
-                // Hide edit button when asset is rejected
+                // Hide edit button when asset is rejected or when viewing original snapshot
                 showEditButton={
                   isAdmin &&
                   !isEditMode &&
                   !canApprove &&
                   !isRejected &&
+                  dataSource !== "aset_copy" &&
                   String(assetStatus || "").toLowerCase() !== "dijual"
                 }
-                onEdit={handleStartEdit}
+                onEdit={() => {
+                  if (dataSource === "aset_copy") {
+                    setApprovalAlert({
+                      type: "warning",
+                      message: "Tidak dapat mengubah data awal (read-only).",
+                    });
+                    return;
+                  }
+                  handleStartEdit();
+                }}
                 additionalButtons={
-                  canApprove && (
-                    <ApprovalActions
-                      onApprove={handleApprove}
-                      onReject={() => setRejectModal(true)}
-                      loading={approvalLoading}
-                      allowReject={false}
-                    />
-                  )
+                  <>
+                    {canApprove && (
+                      <ApprovalActions
+                        onApprove={handleApprove}
+                        onReject={() => setRejectModal(true)}
+                        loading={approvalLoading}
+                        allowReject={false}
+                      />
+                    )}
+                  </>
                 }
                 imageProps={{
                   previewUrl,
@@ -437,6 +486,34 @@ export default function AssetDetail({
               </div>
             )}
           </div>
+
+          {/* Floating data-source toggle (bottom-right) */}
+          {asetRecord && activeTab === "detail" && (
+            <div className="absolute bottom-5 right-5 z-10">
+              <button
+                type="button"
+                onClick={() =>
+                  setDataSource((prev) =>
+                    prev === "aset" ? "aset_copy" : "aset"
+                  )
+                }
+                className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center border transition-colors duration-150 ${
+                  dataSource === "aset"
+                    ? "bg-indigo-600 text-white border-indigo-700"
+                    : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                }`}
+                aria-label={
+                  dataSource === "aset" ? "data saat ini" : "data awal"
+                }
+              >
+                {dataSource === "aset" ? (
+                  <FaDatabase className="w-5 h-5" />
+                ) : (
+                  <FaHistory className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </div>
       <style>{`

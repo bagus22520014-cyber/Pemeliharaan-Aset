@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { uploadAsetImage, listAset, updateAset } from "@/api/aset";
+import {
+  uploadAsetImage,
+  listAset,
+  updateAset,
+  listAsetCopy,
+} from "@/api/aset";
 import { listBeban } from "@/api/beban";
 import { getStatusClass, prepareAssetPayload } from "@/utils/format";
 import { generateBarcodeUrl } from "@/utils/barcode";
@@ -25,6 +30,7 @@ export function useAssetDetail({ asset, onUpdated }) {
   const [imageSrc, setImageSrc] = useState(null);
   const [imgKey, setImgKey] = useState(() => Date.now());
   const [confirmUpdate, setConfirmUpdate] = useState(false);
+  const [dataSource, setDataSource] = useState("aset"); // 'aset' or 'aset_copy'
 
   const backendOrigin =
     import.meta.env.VITE_BACKEND_URL ||
@@ -77,7 +83,8 @@ export function useAssetDetail({ asset, onUpdated }) {
       onUpdated?.(merged, "image");
 
       try {
-        const all = await listAset({
+        const listFn = dataSource === "aset_copy" ? listAsetCopy : listAset;
+        const all = await listFn({
           includeBebanHeader: false,
         });
         const arr = Array.isArray(all) ? all : [all];
@@ -210,7 +217,7 @@ export function useAssetDetail({ asset, onUpdated }) {
   // Sync local asset with prop
   useEffect(() => {
     setLocalAsset(asset);
-  }, [asset]);
+  }, [asset, dataSource]);
 
   // Load master asset
   useEffect(() => {
@@ -219,7 +226,8 @@ export function useAssetDetail({ asset, onUpdated }) {
       setMasterAsset(null);
       if (!asset) return;
       try {
-        const all = await listAset({ includeBebanHeader: false });
+        const listFn = dataSource === "aset_copy" ? listAsetCopy : listAset;
+        const all = await listFn({ includeBebanHeader: false });
         const arr = Array.isArray(all) ? all : [all];
         const findKey = String(asset.asetId ?? asset.id ?? "");
         const found = arr.find(
@@ -234,7 +242,7 @@ export function useAssetDetail({ asset, onUpdated }) {
     return () => {
       cancelled = true;
     };
-  }, [asset]);
+  }, [asset, dataSource]);
 
   // Load aset record
   useEffect(() => {
@@ -246,7 +254,8 @@ export function useAssetDetail({ asset, onUpdated }) {
       const findKey = String(asset.asetId ?? asset.id ?? "");
       if (!findKey) return;
       try {
-        const all = await listAset({ includeBebanHeader: false });
+        const listFn = dataSource === "aset_copy" ? listAsetCopy : listAset;
+        const all = await listFn({ includeBebanHeader: false });
         const arr = Array.isArray(all) ? all : [all];
         const normalize = (v) => String(v ?? "").trim();
         const findKeyNormalized = normalize(findKey);
@@ -317,7 +326,7 @@ export function useAssetDetail({ asset, onUpdated }) {
     return () => {
       cancelled = true;
     };
-  }, [asset]);
+  }, [asset, dataSource]);
 
   // Load beban list for edit mode
   useEffect(() => {
@@ -401,5 +410,7 @@ export function useAssetDetail({ asset, onUpdated }) {
     handleCancelEdit,
     handleUpdateRequest,
     handleUpdateSubmit,
+    dataSource,
+    setDataSource,
   };
 }
