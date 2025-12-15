@@ -78,11 +78,98 @@ export default function TabRiwayat({ asetId, onClose }) {
           return true;
         });
 
-        setHistory(filteredData);
+        // Deduplicate mutasi records (user + admin duplicates) by record id.
+        // Keep the most recent mutasi record and preserve other non-mutasi items.
+        const mutasiMap = {};
+        const nonMutasi = [];
+        for (const it of filteredData) {
+          const ref = (it.tabelRef || it.tabel_ref || "")
+            .toString()
+            .toLowerCase();
+          const rid = it.recordId || it.record_id;
+          if (ref === "mutasi" && rid != null) {
+            const key = String(rid);
+            const prev = mutasiMap[key];
+            if (!prev) {
+              mutasiMap[key] = it;
+            } else {
+              // Prefer original submission (input) or non-admin user when duplicates exist.
+              const prevJenis = (prev.jenisAksi || prev.jenis_aksi || "")
+                .toString()
+                .toLowerCase();
+              const curJenis = (it.jenisAksi || it.jenis_aksi || "")
+                .toString()
+                .toLowerCase();
+              const prevUser = (prev.username || prev.user || "")
+                .toString()
+                .toLowerCase();
+              const curUser = (it.username || it.user || "")
+                .toString()
+                .toLowerCase();
+
+              if (prevJenis.includes("input") && !curJenis.includes("input")) {
+                // keep prev (likely the user's original input)
+              } else if (
+                !prevJenis.includes("input") &&
+                curJenis.includes("input")
+              ) {
+                // prefer current if it's the input action
+                mutasiMap[key] = it;
+              } else if (
+                prevUser &&
+                curUser &&
+                prevUser !== "admin" &&
+                curUser === "admin"
+              ) {
+                // keep non-admin prev
+              } else if (
+                prevUser &&
+                curUser &&
+                curUser !== "admin" &&
+                prevUser === "admin"
+              ) {
+                // prefer non-admin current
+                mutasiMap[key] = it;
+              } else {
+                // fallback: keep the earliest record (original action)
+                const prevTime =
+                  new Date(
+                    prev.waktu ||
+                      prev.time ||
+                      prev.created_at ||
+                      prev.tanggal ||
+                      0
+                  ).getTime() || 0;
+                const curTime =
+                  new Date(
+                    it.waktu || it.time || it.created_at || it.tanggal || 0
+                  ).getTime() || 0;
+                if (curTime < prevTime) {
+                  mutasiMap[key] = it;
+                }
+              }
+            }
+          } else {
+            nonMutasi.push(it);
+          }
+        }
+
+        const dedupedMutasi = Object.values(mutasiMap);
+        const finalData = nonMutasi.concat(dedupedMutasi).sort((a, b) => {
+          return (
+            new Date(b.waktu || b.time || b.created_at || b.tanggal) -
+            new Date(a.waktu || a.time || a.created_at || a.tanggal)
+          );
+        });
+
+        // Use the deduplicated list for history, grouping and detail fetching
+        const timelineData = finalData;
+
+        setHistory(timelineData);
 
         // Group by year and month
         const grouped = {};
-        filteredData.forEach((item) => {
+        timelineData.forEach((item) => {
           const date = new Date(item.waktu);
           const year = date.getFullYear();
           const month = date.getMonth(); // 0-11
@@ -97,7 +184,7 @@ export default function TabRiwayat({ asetId, onClose }) {
 
         // Fetch details for each record
         const details = {};
-        for (const item of filteredData) {
+        for (const item of timelineData) {
           const tabelRef = item.tabelRef || item.tabel_ref;
           const recordId = item.recordId || item.record_id;
 
@@ -114,7 +201,7 @@ export default function TabRiwayat({ asetId, onClose }) {
           }
         }
         // For aset table entries, attempt to fetch by recordId or fallback using item
-        for (const item of filteredData) {
+        for (const item of timelineData) {
           const tabelRef = item.tabelRef || item.tabel_ref;
           const recordId = item.recordId || item.record_id;
           if (tabelRef === "aset" && recordId) {

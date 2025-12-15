@@ -110,7 +110,6 @@ export function TimelineItem({
 
         {/* Body */}
         <div className="px-6 py-5">
-          {/* Riwayat Persetujuan - moved to top for visibility */}
           {(() => {
             const approvals =
               item.perubahan?.approvals ||

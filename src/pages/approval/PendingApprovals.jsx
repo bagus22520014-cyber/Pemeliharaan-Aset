@@ -251,6 +251,79 @@ export default function PendingApprovals() {
       setError("");
       await rejectRecord(record.tabel_ref, record.record_id, alasan);
       setSuccess(`${record.tabel_ref} berhasil ditolak`);
+      // If this was a dijual (sale) or dipinjam (loan) request, ensure the asset status is reverted to 'aktif'
+      try {
+        if (
+          ["dijual", "dipinjam"].includes(
+            String(record.tabel_ref || "").toLowerCase()
+          )
+        ) {
+          const detail = await getApprovalDetail(
+            record.tabel_ref,
+            record.record_id
+          );
+          const asetId =
+            detail?.asetId ||
+            detail?.AsetId ||
+            detail?.aset_id ||
+            detail?.record?.aset_id ||
+            detail?.record?.asetId ||
+            null;
+
+          if (asetId) {
+            const findCompositeAsetId = (obj, depth = 3) => {
+              if (!obj || depth < 0) return null;
+              if (
+                typeof obj === "string" &&
+                obj.includes("/") &&
+                obj.length > 5
+              )
+                return obj;
+              if (typeof obj !== "object") return null;
+              for (const v of Object.values(obj)) {
+                const found = findCompositeAsetId(v, depth - 1);
+                if (found) return found;
+              }
+              return null;
+            };
+
+            let targetId = String(asetId);
+            try {
+              const resolved = await getAset(asetId);
+              if (resolved) {
+                const hasNumericId =
+                  resolved.id && /^\d+$/.test(String(resolved.id));
+                const hasAsetId =
+                  resolved.asetId && String(resolved.asetId).trim().length > 0;
+                if (/^\d+$/.test(String(asetId))) {
+                  if (hasNumericId) targetId = resolved.id;
+                } else {
+                  if (hasAsetId) targetId = resolved.asetId;
+                  else targetId = String(asetId);
+                }
+              }
+            } catch (resolveErr) {
+              const composite = findCompositeAsetId(detail);
+              if (composite) targetId = composite;
+            }
+
+            try {
+              await updateAset(targetId, { statusAset: "aktif" });
+            } catch (e) {
+              const composite = findCompositeAsetId(detail);
+              if (composite && composite !== String(targetId)) {
+                try {
+                  await updateAset(composite, { statusAset: "aktif" });
+                } catch (e2) {
+                  // ignore
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // ignore post-reject hook errors
+      }
       // Notify submitter about rejection (best-effort)
       try {
         const detail = await getApprovalDetail(
