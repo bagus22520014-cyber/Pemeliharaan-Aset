@@ -11,7 +11,6 @@ import {
 } from "react-icons/fa";
 import {
   markAsRead,
-  markAllAsRead,
   deleteNotification,
   createNotification,
 } from "@/api/notification";
@@ -368,12 +367,22 @@ export default function NotificationPanel({
   // Handle mark all as read
   const handleMarkAllRead = async () => {
     try {
-      await markAllAsRead();
-      onRefresh?.();
-    } catch (err) {
-      // ignore
-      onRefresh?.();
+      // Mark each unread notification individually to avoid relying on a
+      // bulk endpoint that may not exist on all backends (prevents 404s).
+      const unread = (userFilteredNotifications || []).filter(
+        (n) => !n.is_read
+      );
+      await Promise.all(
+        unread.map((n) =>
+          markAsRead(n.id).catch(() => {
+            /* ignore individual failures */
+          })
+        )
+      );
+    } catch (e) {
+      /* ignore errors */
     }
+    onRefresh?.();
   };
 
   // Show all notifications (clear locally hidden IDs)

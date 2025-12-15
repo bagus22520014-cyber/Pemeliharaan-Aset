@@ -249,8 +249,6 @@ export default function FormFields({
             onChange={(e) =>
               setForm({ ...form, departemen_id: e.target.value })
             }
-            required
-            aria-required="true"
             className="w-full text-base mt-1 bg-transparent border-none p-0 focus:outline-none focus:ring-0 text-gray-400"
             style={{ color: form?.departemen_id ? "#1f2937" : "#9ca3af" }}
           >

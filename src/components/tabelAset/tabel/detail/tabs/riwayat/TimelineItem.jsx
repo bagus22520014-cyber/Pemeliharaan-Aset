@@ -110,6 +110,110 @@ export function TimelineItem({
 
         {/* Body */}
         <div className="px-6 py-5">
+          {/* Riwayat Persetujuan - moved to top for visibility */}
+          {(() => {
+            const approvals =
+              item.perubahan?.approvals ||
+              item.approvals ||
+              item.approval_history;
+            if (
+              !approvals ||
+              !Array.isArray(approvals) ||
+              approvals.length === 0
+            )
+              return null;
+
+            return (
+              <div className="mb-4 space-y-2">
+                <div className="font-semibold text-gray-700">status:</div>
+                {approvals.map((apr, idx) => {
+                  const who =
+                    apr.user ||
+                    apr.username ||
+                    apr.dilakukan_oleh ||
+                    apr.by ||
+                    apr.approved_by ||
+                    apr.oleh_username ||
+                    apr.approver_username ||
+                    apr.approver ||
+                    "-";
+                  const role =
+                    apr.role ||
+                    apr.user_role ||
+                    apr.by_role ||
+                    apr.oleh_role ||
+                    apr.approver_role ||
+                    "-";
+                  const status = (
+                    apr.status ||
+                    apr.action ||
+                    apr.approval_action ||
+                    ""
+                  ).toString();
+                  const time =
+                    apr.timestamp ||
+                    apr.waktu ||
+                    apr.created_at ||
+                    apr.tanggal ||
+                    apr.time ||
+                    "";
+                  const alasan =
+                    apr.alasan ||
+                    apr.reason ||
+                    apr.note ||
+                    apr.notes ||
+                    apr.keterangan ||
+                    null;
+
+                  const statusText = status
+                    ? String(status).charAt(0).toUpperCase() +
+                      String(status).slice(1)
+                    : "";
+                  const isApproved =
+                    status &&
+                    (String(status).toLowerCase().includes("setuj") ||
+                      String(status).toLowerCase().includes("approve"));
+
+                  return (
+                    <div
+                      key={idx}
+                      className="flex flex-col text-sm bg-gray-50 p-2 rounded-lg border border-gray-200"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`font-semibold ${
+                            isApproved ? "text-green-700" : "text-red-600"
+                          }`}
+                        >
+                          {statusText}
+                        </span>
+                        <span className="text-gray-600">oleh:</span>
+                        <span className="font-medium text-gray-900">
+                          {who || "-"}
+                        </span>
+                        {role ? (
+                          <span className="text-gray-500 text-xs">
+                            ({role})
+                          </span>
+                        ) : null}
+                        {time && (
+                          <span className="ml-auto text-xs text-gray-400">
+                            {formatDate(time)}
+                          </span>
+                        )}
+                      </div>
+                      {alasan && (
+                        <div className="mt-1 text-sm text-gray-700">
+                          <span className="font-medium">Alasan: </span>
+                          <span>{alasan}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
           {jenisAksi === "input" && item.asetIdString && (
             <div className="mb-4 flex items-center gap-3 bg-blue-50 px-4 py-3 rounded-xl border-2 border-blue-200">
               <FaIdBadge className="text-blue-500 text-lg" />

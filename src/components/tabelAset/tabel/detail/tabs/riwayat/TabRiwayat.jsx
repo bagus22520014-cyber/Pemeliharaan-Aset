@@ -1,4 +1,10 @@
 import React, { useState, useEffect } from "react";
+import {
+  FaTools,
+  FaExchangeAlt,
+  FaExclamationTriangle,
+  FaHandshake,
+} from "react-icons/fa";
 import { listRiwayat } from "@/api/aset";
 import { RecordDetail } from "./RecordDetail";
 import { YearSection } from "./YearSection";
@@ -317,6 +323,28 @@ export default function TabRiwayat({ asetId, onClose }) {
     return acc + value;
   }, 0);
 
+  // counts of approved entries by type
+  const approvedCounts = history.reduce((acc, item) => {
+    const tabelRef = (item.tabelRef || item.tabel_ref || "")
+      .toString()
+      .toLowerCase();
+    const recordId = item.recordId || item.record_id;
+    const key = `${tabelRef}-${recordId}`;
+    const detail = recordDetails[key] || {};
+    const approval = (
+      (item.approval_status ||
+        item.ApprovalStatus ||
+        detail.approval_status ||
+        detail.ApprovalStatus ||
+        "") + ""
+    ).toLowerCase();
+    if (approval !== "disetujui" && approval !== "approved") return acc;
+
+    if (!acc[tabelRef]) acc[tabelRef] = 0;
+    acc[tabelRef] = acc[tabelRef] + 1;
+    return acc;
+  }, {});
+
   const scrollToSection = (year, month) => {
     const elementId =
       month !== null ? `month-${year}-${month}` : `year-${year}`;
@@ -456,11 +484,91 @@ export default function TabRiwayat({ asetId, onClose }) {
           </div>
         </div>
 
-        {/* Fixed Footer - stays below the scrollable content */}
-        <div className="flex-none bg-white p-4 flex justify-end items-center gap-4">
-          <div className="text-sm text-gray-600">Total biaya perbaikan:</div>
-          <div className="text-lg font-semibold text-gray-800">
-            Rp {totalApprovedPerbaikan.toLocaleString("id-ID")}
+        {/* Fixed Footer - summary card with counts and total */}
+        <div className="flex-none bg-gray-50 p-4">
+          <div className="w-full">
+            <div className="flex items-center justify-between gap-4 bg-white rounded-xl shadow p-3 md:p-4 w-full">
+              <div className="flex items-center gap-3">
+                <div className="flex gap-2 mt-0 flex-wrap">
+                  <span className="text-sm px-3 py-2 rounded-sm bg-gray-100 text-gray-800 flex items-center gap-3 border border-gray-200 shadow-sm w-40">
+                    <span
+                      className={`${getIconColor(
+                        "perbaikan_input"
+                      )} w-8 h-8 rounded-sm flex items-center justify-center text-white shrink-0`}
+                    >
+                      <FaTools className="w-4 h-4" />
+                    </span>
+                    <div className="flex flex-col">
+                      <span className="text-xs text-gray-600">Perbaikan</span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {approvedCounts.perbaikan || 0}
+                      </span>
+                    </div>
+                  </span>
+
+                  <span className="text-sm px-3 py-2 rounded-sm bg-gray-100 text-gray-800 flex items-center gap-3 border border-gray-200 shadow-sm w-40">
+                    <span
+                      className={`${getIconColor(
+                        "mutasi_input"
+                      )} w-8 h-8 rounded-sm flex items-center justify-center text-white shrink-0`}
+                    >
+                      <FaExchangeAlt className="w-4 h-4" />
+                    </span>
+                    <div className="flex flex-col">
+                      <span className="text-xs text-gray-600">Mutasi</span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {approvedCounts.mutasi || 0}
+                      </span>
+                    </div>
+                  </span>
+
+                  <span className="text-sm px-3 py-2 rounded-sm bg-gray-100 text-gray-800 flex items-center gap-3 border border-gray-200 shadow-sm w-40">
+                    <span
+                      className={`${getIconColor(
+                        "rusak_input"
+                      )} w-8 h-8 rounded-sm flex items-center justify-center text-white shrink-0`}
+                    >
+                      <FaExclamationTriangle className="w-4 h-4" />
+                    </span>
+                    <div className="flex flex-col">
+                      <span className="text-xs text-gray-600">Rusak</span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {approvedCounts.rusak || 0}
+                      </span>
+                    </div>
+                  </span>
+
+                  <span className="text-sm px-3 py-2 rounded-sm bg-gray-100 text-gray-800 flex items-center gap-3 border border-gray-200 shadow-sm w-40">
+                    <span
+                      className={`${getIconColor(
+                        "dipinjam_input"
+                      )} w-8 h-8 rounded-sm flex items-center justify-center text-white shrink-0`}
+                    >
+                      <FaHandshake className="w-4 h-4" />
+                    </span>
+                    <div className="flex flex-col">
+                      <span className="text-xs text-gray-600">Dipinjam</span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {approvedCounts.dipinjam || 0}
+                      </span>
+                    </div>
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="text-sm text-gray-500">
+                  Total biaya perbaikan:
+                </div>
+                <div className="text-xl md:text-2xl font-semibold text-gray-900">
+                  {new Intl.NumberFormat("id-ID", {
+                    style: "currency",
+                    currency: "IDR",
+                    maximumFractionDigits: 0,
+                  }).format(totalApprovedPerbaikan)}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

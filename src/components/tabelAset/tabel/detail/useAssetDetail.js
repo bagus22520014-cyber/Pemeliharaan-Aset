@@ -156,6 +156,7 @@ export function useAssetDetail({ asset, onUpdated }) {
       { key: "asetId", label: "ID Aset" },
       { key: "namaAset", label: "Nama Aset" },
       { key: "grup", label: "Kategori" },
+      { key: "departemen_id", label: "Departemen" },
       { key: "akunPerkiraan", label: "Akun Perkiraan" },
       { key: "beban", label: "Beban" },
       { key: "tglPembelian", label: "Tanggal Pembelian" },
