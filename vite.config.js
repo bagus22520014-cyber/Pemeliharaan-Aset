@@ -12,12 +12,9 @@ export default defineConfig({
     },
   },
   server: {
-    host: "0.0.0.0",
-    port: 5173,
-    hmr: { host: "192.168.1.13" },
     proxy: {
       "/user": {
-        target: "http://192.168.1.13:4000",
+        target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
         bypass: (req) => {
@@ -29,7 +26,7 @@ export default defineConfig({
         },
       },
       "/aset": {
-        target: "http://192.168.1.13:4000",
+        target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
         bypass: (req) => {
@@ -48,47 +45,47 @@ export default defineConfig({
         },
       },
       "/perbaikan": {
-        target: "http://192.168.1.13:4000",
+        target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
       },
       "/rusak": {
-        target: "http://192.168.1.13:4000",
+        target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
       },
       "/dipinjam": {
-        target: "http://192.168.1.13:4000",
+        target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
       },
       "/dijual": {
-        target: "http://192.168.1.13:4000",
+        target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
       },
       "/riwayat": {
-        target: "http://192.168.1.13:4000",
+        target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
       },
       "/beban": {
-        target: "http://192.168.1.13:4000",
+        target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
       },
       "/departemen": {
-        target: "http://192.168.1.13:4000",
+        target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
       },
       "/mutasi": {
-        target: "http://192.168.1.13:4000",
+        target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
       },
       "/approval": {
-        target: "http://192.168.1.13:4000",
+        target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
         bypass: (req) => {
@@ -100,7 +97,7 @@ export default defineConfig({
         },
       },
       "/notification": {
-        target: "http://192.168.1.13:4000",
+        target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
         bypass: (req) => {
