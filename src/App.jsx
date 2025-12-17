@@ -57,6 +57,20 @@ function App() {
     else localStorage.removeItem("user");
   }, [user]);
 
+  // Listen for external session updates (e.g., user edited their own beban)
+  useEffect(() => {
+    const handler = (e) => {
+      try {
+        const updated = e?.detail;
+        if (updated && updated.username) setUser(updated);
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener("session:update", handler);
+    return () => window.removeEventListener("session:update", handler);
+  }, []);
+
   const handleLogin = (u) => setUser(u);
   const handleLogout = () => setUser(null);
 

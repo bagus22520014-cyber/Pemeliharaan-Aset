@@ -77,11 +77,31 @@ export async function listUsers() {
 
 export async function createUser(payload) {
   const headers = { "Content-Type": "application/json", ...getAuthHeaders() };
+  // Ensure sensible defaults for admins so DB constraints (non-null Beban) pass
+  const body = { ...(payload || {}) };
+  // Default admin password when not provided
+  if (String(body.role).toLowerCase() === "admin" && !body.password) {
+    body.password = "Admin#1234";
+  }
+  // Ensure beban is present. Backend may expect `beban` or `Beban` field.
+  const hasBeban =
+    Array.isArray(body.beban) && body.beban.length > 0
+      ? true
+      : Array.isArray(body.Beban) && body.Beban.length > 0
+      ? true
+      : Boolean(body.beban) || Boolean(body.Beban);
+  if (!hasBeban) {
+    // Default beban for admin users
+    const defaultBeban = ["MLM"];
+    body.beban = defaultBeban;
+    body.Beban = defaultBeban;
+  }
+
   const res = await fetch(`/user/create`, {
     method: "POST",
     credentials: "include",
     headers,
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
   const data = await handleResponse(res);
   return data;

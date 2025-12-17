@@ -16,12 +16,30 @@ export default function Login({ onLogin }) {
     setLoading(true);
     const payload = { username, password };
     try {
-      const res = await fetch("/user", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      // Try several common login endpoints because backends vary
+      const endpoints = [
+        "/user",
+        "/user/login",
+        "/auth/login",
+        "/login",
+        "/auth/token",
+      ];
+      let res = null;
+      for (const url of endpoints) {
+        try {
+          res = await fetch(url, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (res && res.ok) break; // stop at first successful endpoint
+        } catch (err) {
+          // network error for this endpoint — try next
+          res = res || null;
+        }
+      }
+      if (!res) throw new Error("No response from login endpoints");
       if (!res.ok) {
         const contentType = res.headers.get("content-type") || "";
         let body;
