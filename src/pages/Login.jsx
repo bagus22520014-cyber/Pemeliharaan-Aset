@@ -25,22 +25,31 @@ export default function Login({ onLogin }) {
         "/auth/token",
       ];
       let res = null;
+      const attempts = [];
       for (const url of endpoints) {
         try {
-          res = await fetch(url, {
+          const r = await fetch(url, {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
+          attempts.push({ url, status: r.status, ok: r.ok });
+          res = r;
           if (res && res.ok) break; // stop at first successful endpoint
         } catch (err) {
-          // network error for this endpoint — try next
+          attempts.push({ url, error: String(err) });
           res = res || null;
         }
       }
       if (!res) throw new Error("No response from login endpoints");
       if (!res.ok) {
+        // Compose a helpful message showing which endpoints failed
+        const failed = attempts
+          .map((a) =>
+            a.error ? `${a.url}: ${a.error}` : `${a.url}: Status ${a.status}`
+          )
+          .join("; ");
         const contentType = res.headers.get("content-type") || "";
         let body;
         try {
@@ -50,8 +59,11 @@ export default function Login({ onLogin }) {
         } catch {
           body = "(unreadable response body)";
         }
-        const message = typeof body === "string" ? body : JSON.stringify(body);
-        throw new Error(message || `Status ${res.status}`);
+        const serverMsg =
+          typeof body === "string" ? body : JSON.stringify(body);
+        throw new Error(
+          `${serverMsg || `Status ${res.status}`} (attempts: ${failed})`
+        );
       }
       const data = await res.json();
       const roleCandidate =
@@ -121,8 +133,12 @@ export default function Login({ onLogin }) {
       }
     } catch (err) {
       // Login fetch failed - falling back to local mode (logged via UI alert)
+      // Show a friendly error message to the user while keeping the raw error
+      // available in the console for debugging.
+      console.debug("login error details:", err);
       setError(
-        `Backend unavailable or returned an error: ${err?.message ?? err}`
+        "Gagal masuk — sepertinya username atau kata sandi tidak cocok. " +
+          "Periksa kembali kredensial dan coba lagi. Jika lupa kata sandi, gunakan fitur reset atau hubungi administrator."
       );
       if (password === "dev") {
         // developer fallback: allow creating a UI-only session without a backend.

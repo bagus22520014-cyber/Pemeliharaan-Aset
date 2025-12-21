@@ -39,196 +39,64 @@ generateAsetId(assets, beban, tglPembelian);
 
 ### Role-Based Data Filtering
 
-**Admin**: Can see/manage all assets (uses `listAset()` with `includeBebanHeader: false`)
-**User**: Filtered by `beban` (department) with location-prefix matching:
+# Copilot / Agent Instructions — Pemeliharaan-Aset (concise)
 
-- User with `BNT-NET` sees both `BNT-NET` and `BNT-MEDIA` assets (same prefix)
-- `parseBebans()` splits comma/semicolon/pipe-separated beban strings into arrays
-- `getAllowedBebansForUser()` extracts prefix (e.g., `BNT` from `BNT-NET`) and matches all bebans with same prefix
-- Backend expects `x-beban` header for filtering (added by `getAuthHeaders()`)
+Purpose: help an AI coding assistant be immediately productive in this repo — frontend React+Vite app with a sibling Node backend in `pemeliharaan-aset-database`.
 
-### Location Distribution System (`distribusi_lokasi`)
+Repo layout (explicit):
 
-Assets can be split across multiple locations using `aset_lokasi` table:
+- `Pemeliharaan-Aset` = frontend (React + Vite, UI assets in `src/`).
+- `pemeliharaan-aset-database` = backend (Node/Express routes, DB access in `db.js`).
 
-- `DistribusiLokasiInput.jsx` manages location allocations (room + quantity)
-- Each location has: `{lokasi, jumlah, keterangan, id?}`
-- Total allocated must not exceed `form.jumlah`
-- Backend API: `src/api/aset-lokasi.js` with CRUD operations (`createAsetLokasi`, `updateAsetLokasi`, `deleteAsetLokasi`)
-- Transactions (perbaikan, rusak, dipinjam, dijual) use `lokasi_id` from `aset_lokasi` as stock source
-- Available rooms filtered by `beban` with autocomplete support
+- Quick run: `npm run dev` in the `Pemeliharaan-Aset` folder (Vite frontend). Backend runs separately (default: http://localhost:4000).
+- Backend code and routes live in `pemeliharaan-aset-database/routes/*.js` and `pemeliharaan-aset-database/index.js`.
 
-### Asset Transactions
+Key patterns (actionable, repo-specific):
 
-All transactions (repairs, damages, loans, sales) follow similar patterns:
+- API layer: one file per resource in `src/api/` (e.g., `src/api/aset.js`, `src/api/aset-lokasi.js`). Use these helpers — they normalize PascalCase ↔ camelCase and centralize `fetch`/headers.
+- Normalization: prefer camelCase in UI. Use `normalizeAset()` / `toServerAset()` in `src/api/aset.js` when reading/sending assets.
+- Encoding: asset identifiers contain `/` — always `encodeURIComponent(asetId)` when constructing URLs.
+- Auth headers: calls use `getAuthHeaders()` which adds `Authorization`, `x-role`, `x-username`, and optionally `x-beban` for server-side filtering. Inspect `src/api/*` for examples.
 
-- API endpoints: `/perbaikan`, `/rusak`, `/dipinjam`, `/dijual`
-- Each transaction references `lokasi_id` from `aset_lokasi` (not just asetId)
-- Transaction tabs in `src/components/tabelAset/tabel/detail/tabs/aksi/`
-- `useTabAksi.js` centralizes transaction logic with CRUD operations
-- History view in `TabRiwayat.jsx` shows timeline of all transactions
+Important components and where to look:
 
-## Development Workflow
+- Pages and entry: [src/main.jsx](src/main.jsx), [src/App.jsx](src/App.jsx), [src/pages/](src/pages/)
+- Asset features: [src/components/tabelAset/](src/components/tabelAset/) (table, detail, tabs, actions)
+- Hooks: `useCreateAsset.js`, `useAssetDetail.js`, `useTabAksi.js` — these encapsulate form, barcode, and transaction logic.
+- Location allocation: `DistribusiLokasiInput.jsx` and `src/api/aset-lokasi.js` — ensure total allocation equals `form.jumlah`.
+- Barcode: `src/utils/barcode.js` (uses bwip-js) — returns image data URLs for display and printing.
 
-### Running the App
+Developer workflows & gotchas:
 
-```bash
-npm run dev          # Starts Vite dev server on port 5173
-# Backend must run separately on port 4000
-```
+- Dev server: `npm run dev` (frontend). Proxy configured in `vite.config.js` to forward API calls to `http://localhost:4000`.
+- Backend dev: open `pemeliharaan-aset-database/index.js` and run `node index.js` (or `npm start` inside that folder). Routes are in `pemeliharaan-aset-database/routes/`.
+- Login dev fallback: `src/pages/Login.jsx` contains a dev-only path if the backend is down — useful for UI work.
+- File uploads: backend expects PascalCase fields (e.g., `Gambar`) in FormData — check `create` and `update` flows in `src/api/aset.js`.
 
-### API Proxy Configuration
+Conventions to follow when editing code:
 
-`vite.config.js` proxies all backend routes to `http://localhost:4000`:
+- Stick to camelCase in UI code; rely on API normalization helpers for server compatibility.
+- Prefer small, focused changes in `src/api/*` rather than spreading header/normalize logic across components.
+- When adding features that change data shape, update the matching `normalize` and `toServer` helpers.
 
-- `/user`, `/aset`, `/beban`, `/departemen`, `/aset-lokasi`
-- `/perbaikan`, `/rusak`, `/dipinjam`, `/dijual`, `/riwayat`
+Where the backend matters:
 
-Update proxy config if backend endpoints change.
+- Cross-repo link: `pemeliharaan-aset-database/` contains database access (`db.js`) and route logic — change both frontend and backend when altering API contracts.
 
-### State Management
+Testing and debugging tips:
 
-- No Redux/Context - uses local component state + prop drilling
-- Session state in `App.jsx` synced with `localStorage` (key: `"user"`)
-- Asset lists fetched fresh on mount via `loadAssets()` in page components
-- Mutations trigger optimistic updates + refetch patterns
+- Common error checks: URL-encoding for IDs, `x-beban` header for filtered lists, total of `distribusi_lokasi` equals `form.jumlah`, FormData field names for file uploads.
+- Use browser DevTools to inspect requests (headers and body) and confirm normalized payloads match backend expectations.
+
+If you change API shapes or field casing, update `src/api/*` normalization helpers first and run integration checks against the local backend in `pemeliharaan-aset-database`.
+
+Files to reference when implementing or reviewing changes:
+
+- Frontend entry and routing: [src/main.jsx](src/main.jsx) and [src/App.jsx](src/App.jsx)
+- API layer: [src/api/aset.js](src/api/aset.js) and other files in [src/api/](src/api/)
+- Asset UI and hooks: [src/components/tabelAset/](src/components/tabelAset/) and [src/utils/barcode.js](src/utils/barcode.js)
+- Backend: [pemeliharaan-aset-database/index.js](pemeliharaan-aset-database/index.js) and [pemeliharaan-aset-database/routes/](pemeliharaan-aset-database/routes/)
+
+Ask me to expand any section (API examples, common edits, or a checklist for PR reviews) and I'll iterate.
 
 ## Component Conventions
-
-### Custom Hooks Pattern
-
-Components with complex logic extract to `use*.js` hooks:
-
-- `useAssetDetail.js`: Image upload, barcode generation, edit mode, location distribution fetching
-- `useCreateAsset.js`: Auto-generated ID toggle, file preview, barcode rendering
-- `useAssetTable.js`: Pagination, sorting, selection, row highlighting logic
-- `useTabAksi.js`: Transaction management (repairs, damages, loans, sales) with CRUD operations
-
-### Form State Structure
-
-Asset forms use a single `form` object with these exact keys:
-
-```javascript
-{
-  asetId,
-    accurateId,
-    namaAset,
-    spesifikasi,
-    grup,
-    beban_id, // NEW: FK to beban table (replaces string beban)
-    departemen_id, // NEW: FK to departemen table
-    akunPerkiraan,
-    nilaiAset,
-    tglPembelian,
-    masaManfaat,
-    statusAset,
-    keterangan,
-    pengguna,
-    lokasi,
-    distribusi_lokasi; // NEW: Array of location allocations
-}
-```
-
-- `beban_id` and `departemen_id` are foreign keys (integers), not string codes
-- `distribusi_lokasi` managed by `DistribusiLokasiInput` component
-- Use `resetForm()` pattern to restore initial state
-
-### Barcode Generation
-
-Uses `bwip-js` for Code128 barcodes:
-
-```javascript
-// src/utils/barcode.js
-generateBarcode(text, options);
-// Returns data URL for canvas-based barcode
-```
-
-See `useCreateAsset.js` and `useAssetDetail.js` for integration patterns.
-
-## API Conventions
-
-### Authentication Headers
-
-All API calls use `getAuthHeaders()` which injects:
-
-- `Authorization: Bearer ${token}` (if available)
-- `x-role: admin|user` (for role-based backend logic)
-- `x-username: <username>` (for audit logging)
-- `x-beban: <department>` (for user data filtering, optional via `includeBebanHeader`)
-
-### Error Handling
-
-```javascript
-try {
-  const data = await someApiCall();
-} catch (err) {
-  // err.status contains HTTP status code
-  // err.message contains normalized error message
-  // err.body contains raw response body
-}
-```
-
-### Date Handling
-
-- UI displays dates as `YYYY-MM-DD` (date inputs)
-- Backend may return ISO strings with `T` - normalize using regex in `normalizeAset()`
-- When sending dates, `toServerAset()` extracts date portion only
-
-### URL Encoding
-
-Asset IDs contain `/` characters - always use `encodeURIComponent(asetId)` when building API URLs:
-
-```javascript
-const encodedId = encodeURIComponent(asetId);
-fetch(`/aset/${encodedId}`);
-```
-
-## Constants & Configuration
-
-**Predefined Options** (loaded dynamically from API):
-
-- `GROUPS`: Asset categories (e.g., "BANGUNAN", "DISTRIBUSI JARINGAN", "HEADEND")
-- `AKUN`: Chart of accounts (e.g., "1701-01 (Tanah)", "1701-02 (Bangunan)")
-- `STATUSES`: ["aktif", "rusak", "diperbaiki", "dipinjam", "dijual"]
-
-**Dynamic Options** (from backend tables):
-
-- `bebanList`: Loaded via `listBeban()` → filter by `aktif: true` → display `kode`
-- `departemenList`: Loaded via `listDepartemen()` → display `nama`
-
-## Testing & Debugging
-
-### Dev Fallback Login
-
-If backend unavailable, use `password: "dev"` in `Login.jsx`:
-
-- `username: admin` → admin role
-- Any other username → user role with `beban: "MLG-NET,MLG-MEDIA"`
-
-This bypass is in `src/pages/Login.jsx` line 109.
-
-### Common Issues
-
-1. **Assets not appearing**: Check `x-beban` header filtering - ensure `includeBebanHeader: false` for full lists
-2. **404 on asset updates**: Asset IDs with `/` must be URL-encoded (`encodeURIComponent()`)
-3. **Image upload fails**: Backend expects `Gambar` field (PascalCase) in FormData
-4. **Barcode not generating**: Verify `bwip-js` canvas rendering in DevTools
-5. **Location allocation errors**: Total `distribusi_lokasi[].jumlah` must equal `form.jumlah`
-6. **Prefix filtering not working**: Ensure `bebanOptions` loaded and `getAllowedBebansForUser()` logic matches prefix extraction
-
-## File Organization Rules
-
-- **Page components** (`src/pages/`): Handle authentication, role guards, and top-level data fetching
-- **Feature components** (`src/components/tabelAset/`): Nested by feature (table, filter, detail, FormLayout)
-- **Shared components** (`src/components/`): Reusable UI (`Alert`, `Confirm`, `Navbar`, modals)
-- **API layer** (`src/api/`): One file per resource (aset, beban, departemen, aset-lokasi, transaksi)
-- **Utils** (`src/utils/`): Pure functions (`format.js` for parsing/formatting, `barcode.js` for barcode generation)
-
-## Styling
-
-- Uses Tailwind CSS v4 with custom CSS variables (indigo/gray/red palettes)
-- Variables defined in `src/index.css` (e.g., `--color-indigo-600`)
-- Responsive design: mobile-first with `md:` breakpoints
-- No CSS modules - utility classes only
-- Form inputs: `border border-gray-200 rounded-md p-2 focus:ring-1 focus:ring-indigo-300`
-- Status badges use dynamic colors via `getStatusClass()` in `src/utils/format.js`
